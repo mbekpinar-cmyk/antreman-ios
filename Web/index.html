@@ -3493,7 +3493,7 @@ let nativeDiag = null;
 let healthData = null, healthAsked = 0;
 function requestHealth(force){
   if(!NATIVE) return;
-  if(!force && Date.now() - healthAsked < 30*60*1000) return;
+  if(!force && Date.now() - healthAsked < 5*60*1000) return;   // kucuk bir dosya okuma — yine de en fazla 5 dk'da bir
   healthAsked = Date.now();
   native("health", {force: !!force});
 }
@@ -3512,12 +3512,46 @@ function readinessOf(m){
   if(respHigh) score = Math.min(score, 4);
   return {score, respHigh, partial: parts.length < 3};
 }
+/* Kestirmeler'in yazdigi saglik.txt — "anahtar=deger" satirlari, birim/virgul toleransli. */
+function parseHealthText(txt){
+  const out = {};
+  const keyOf = k => {
+    k = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ı/g,"i").trim();
+    if(/^(sleep|uyku|uni)/.test(k)) return "sleepH";
+    if(/^(hrv|nabiz degiskenligi)/.test(k)) return "hrv";
+    if(/^(rhr|resting|dinlenik|nabiz|leposyke)/.test(k)) return "rhr";
+    if(/^(resp|solunum|breath|hengitys)/.test(k)) return "resp";
+    return null;
+  };
+  String(txt||"").split(/\r?\n/).forEach(line => {
+    const mm = line.match(/^\s*([^=:]+)[=:](.*)$/); if(!mm) return;
+    const key = keyOf(mm[1]); if(!key) return;
+    const nums = (mm[2].replace(/(\d),(\d)/g,"$1.$2").match(/-?\d+(?:\.\d+)?/g) || []).map(Number).filter(n => isFinite(n));
+    if(!nums.length) return;
+    let v = key === "sleepH" ? nums.reduce((a,b)=>a+b,0) : nums.reduce((a,b)=>a+b,0)/nums.length;
+    if(key === "sleepH"){ if(v > 1440) v = v/3600; else if(v > 24) v = v/60; }
+    if(v > 0) out[key] = Math.round(v*100)/100;
+  });
+  return out;
+}
+function dayISO(d){ const z = n => String(n).padStart(2,"0"); return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate()); }
+function onHealthFile(f){
+  if(!f || f.status !== "ok"){ onHealth({status: "missing"}); return; }
+  const today = parseHealthText(f.text);
+  const fresh = (Date.now() - (f.mtime||0)) < 20*3600*1000;
+  const date = dayISO(new Date(f.mtime || Date.now()));
+  const past = (S.readiness||[]).filter(r => r && r.date !== date && (r.src === "shortcut" || r.src === "health")).slice(-21);
+  const med = k => { const v = past.map(r => r[k]).filter(x => typeof x === "number").sort((a,b)=>a-b);
+    if(!v.length) return undefined; const h = v.length>>1; return v.length%2 ? v[h] : (v[h-1]+v[h])/2; };
+  const base = {sleepH: med("sleepH"), hrv: med("hrv"), rhr: med("rhr"), resp: med("resp")};
+  onHealth({status: Object.keys(today).length ? "ok" : "empty", date, today, base, days: past.length, stale: !fresh, src: "shortcut"});
+}
 function onHealth(m){
   healthData = m;
   const r = readinessOf(m);
   if(r && m.date){
     const t = m.today || {};
-    const row = {date:m.date, score:r.score, sleepH:t.sleepH??null, hrv:t.hrv??null, rhr:t.rhr??null, resp:t.resp??null, src:"health"};
+    const row = {date:m.date, score:r.score, sleepH:t.sleepH??null, hrv:t.hrv??null, rhr:t.rhr??null, resp:t.resp??null, src:m.src||"health"};
     if(!Array.isArray(S.readiness)) S.readiness = [];
     const i = S.readiness.findIndex(x => x.date === m.date);
     const same = i >= 0 && JSON.stringify(S.readiness[i]) === JSON.stringify(row);
@@ -3531,7 +3565,7 @@ function readyCardHtml(){
   if(!m) return `<div class="readycard"><div class="grow"><div class="lbl">${T("Hazırlık")}</div><div class="msg">${T("Apple Health okunuyor…")}</div></div></div>`;
   if(m.status !== "ok"){
     return `<div class="readycard" onclick="requestHealth(true)"><div class="grow"><div class="lbl">${T("Hazırlık")}</div>
-      <div class="msg">${T("Health verisi yok. İzin için: Ayarlar › Sağlık › Veri Erişimi › Antrenman. Dokun: yeniden dene.")}</div></div></div>`;
+      <div class="msg">${m.status === "missing" ? T("Sağlık kestirmesi henüz dosya yazmamış (Dosyalar › Antrenman › saglik.txt). Dokun: yeniden dene.") : T("saglik.txt okundu ama içinde değer bulunamadı. Dokun: yeniden dene.")}</div></div></div>`;
   }
   const r = readinessOf(m), t = m.today||{}, b = m.base||{};
   if(!r) return `<div class="readycard" onclick="requestHealth(true)"><div class="grow"><div class="lbl">${T("Hazırlık")}</div><div class="msg">${T("Bu gece için henüz veri yok.")}</div></div></div>`;
@@ -3560,7 +3594,7 @@ function readyCardHtml(){
         <span>${T("Dinlenik nabız")}</span><span>${cmp(t.rhr, b.rhr, false, f0)}</span>
         <span>${T("Solunum")}</span><span>${cmp(t.resp, b.resp, false, f1)}</span>
       </div>
-      <div class="msg" style="font-size:10.5px;color:var(--faint);margin-top:4px">${T("Apple Watch verilerinden hesaplandı · / = son {n} gün ortancası",{n:m.days||0})}</div>
+      <div class="msg" style="font-size:10.5px;color:var(--faint);margin-top:4px">${m.stale?`<span style="color:var(--amber)">${T("Eski veri — kestirme bugün çalışmamış")}</span> · `:''}${m.days ? T("Apple Watch verilerinden hesaplandı · / = son {n} gün ortancası",{n:m.days}) : T("Karşılaştırma için birkaç günlük veri birikmesi gerekiyor.")}</div>
     </div></div>`;
 }
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) requestHealth(false); });
@@ -3568,7 +3602,7 @@ window.runNativeDiag = function(){ nativeDiag = [["…","kontrol ediliyor"]]; re
 window.testRest = function(){ startRest(20, "Test"); setTimeout(()=>native("diag"), 1500); };
 window.__fromNative = function(m){
   try{
-    if(m && m.type === "health"){ onHealth(m); return; }
+    if(m && m.type === "healthFile"){ onHealthFile(m); return; }
     if(m && m.type === "diag"){ nativeDiag = (m.rows || []).concat([["JS hataları", jsErrors.length ? jsErrors.slice(-5).join(" | ") : "yok"]]); if(view === "settings") render(); return; }
     if(!m || m.type !== "restSync") return;
     const end = +m.end || 0;
@@ -3974,6 +4008,10 @@ function runMigrations(){
    ========================================================= */
 /* ---- CEVIRI SOZLUGU (anahtar = Turkce kaynak metin) ---- */
 Object.assign(I18N.en, {
+"Sağlık kestirmesi henüz dosya yazmamış (Dosyalar › Antrenman › saglik.txt). Dokun: yeniden dene.": "The health shortcut hasn't written its file yet (Files › Antrenman › saglik.txt). Tap to retry.",
+"saglik.txt okundu ama içinde değer bulunamadı. Dokun: yeniden dene.": "saglik.txt was read but no values were found. Tap to retry.",
+"Eski veri — kestirme bugün çalışmamış": "Old data — the shortcut didn't run today",
+"Karşılaştırma için birkaç günlük veri birikmesi gerekiyor.": "A few days of data are needed for comparison.",
 "Apple Health okunuyor…": "Reading Apple Health…",
 "Health verisi yok. İzin için: Ayarlar › Sağlık › Veri Erişimi › Antrenman. Dokun: yeniden dene.": "No Health data. To allow it: Settings › Health › Data Access › Antrenman. Tap to retry.",
 "Bu gece için henüz veri yok.": "No data for last night yet.",
@@ -4244,6 +4282,10 @@ Object.assign(I18N.en, {
 "Yarım kalmış bir {name} antrenmanın var{ago}.\n\nKaldığın yerden devam etmek ister misin?\n\nTamam = devam et\nİptal = bu antrenmanı sil": "You have an unfinished {name} workout{ago}.\n\nDo you want to continue where you left off?\n\nOK = continue\nCancel = delete this workout"
 });
 Object.assign(I18N.fi, {
+"Sağlık kestirmesi henüz dosya yazmamış (Dosyalar › Antrenman › saglik.txt). Dokun: yeniden dene.": "Terveyspikakomento ei ole vielä kirjoittanut tiedostoaan (Tiedostot › Antrenman › saglik.txt). Napauta yrittääksesi uudelleen.",
+"saglik.txt okundu ama içinde değer bulunamadı. Dokun: yeniden dene.": "saglik.txt luettiin, mutta arvoja ei löytynyt. Napauta yrittääksesi uudelleen.",
+"Eski veri — kestirme bugün çalışmamış": "Vanhaa tietoa — pikakomento ei ajettu tänään",
+"Karşılaştırma için birkaç günlük veri birikmesi gerekiyor.": "Vertailuun tarvitaan muutaman päivän tiedot.",
 "Apple Health okunuyor…": "Luetaan Apple Healthia…",
 "Health verisi yok. İzin için: Ayarlar › Sağlık › Veri Erişimi › Antrenman. Dokun: yeniden dene.": "Ei Health-tietoja. Salli: Asetukset › Terveys › Tietojen käyttö › Antrenman. Napauta yrittääksesi uudelleen.",
 "Bu gece için henüz veri yok.": "Viime yöltä ei vielä ole tietoja.",

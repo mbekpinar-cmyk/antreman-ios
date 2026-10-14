@@ -84,11 +84,9 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
                 UIImpactFeedbackGenerator(style: style == "medium" ? .medium : .light).impactOccurred()
             }
         case "health":
-            let force = (body["force"] as? Bool) ?? false
-            Task {
-                let payload = await HealthManager.shared.fetch(force: force)
-                self.send(payload)
-            }
+            // Kestirmeler uygulamasinin her sabah yazdigi saglik.txt (Dosyalar › Antrenman).
+            // Ucretsiz imzada HealthKit yetkisi verilmedigi icin Health'e bu yoldan ulasiyoruz.
+            send(HealthFile.read())
         case "diag":
             Task { await sendDiagnostics() }
         case "lang":
@@ -130,7 +128,7 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
                 ["Aktif Live Activity", String(Activity<RestAttributes>.activities.count)],
                 ["Son Live Activity denemesi", RestController.shared.lastActivityResult],
                 ["Bildirim izni", notif],
-                ["Health", HealthManager.shared.lastStatus],
+                ["Kestirme dosyası", HealthFile.status()],
             ],
         ])
     }
