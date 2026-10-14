@@ -48,6 +48,26 @@ jobs:
         if: failure()
         run: grep -n -B2 -A6 "error:" build.log | head -200 || true
 
+      - name: Verify bundle
+        run: |
+          APP=build/Build/Products/Release-iphoneos/Antreman.app
+          EXT="$APP/PlugIns/AntremanWidget.appex"
+          set -e
+          test -f "$APP/Web/index.html"
+          test -d "$EXT"
+          /usr/libexec/PlistBuddy -c "Print :NSSupportsLiveActivities" "$APP/Info.plist" | grep -q true
+          /usr/libexec/PlistBuddy -c "Print :NSExtension:NSExtensionPointIdentifier" "$EXT/Info.plist" | grep -q widgetkit
+          test -f "$APP/Metadata.appintents/extract.actionsdata"
+          {
+            echo "### Paket kontrolu"
+            xcodebuild -version | head -1
+            echo "- Uygulama: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist") / iOS $(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist")+"
+            echo "- Widget: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$EXT/Info.plist")"
+            echo "- Web/index.html: $(wc -c < "$APP/Web/index.html") bayt"
+            echo "- App Intents: $(grep -o 'AddRestTimeIntent\|EndRestIntent' "$APP/Metadata.appintents/extract.actionsdata" | sort -u | tr '\n' ' ')"
+            echo "- Uyari sayisi: $(grep -c 'warning:' build.log || true)"
+          } | tee manifest.md
+
       - name: Package IPA
         run: |
           APP=build/Build/Products/Release-iphoneos/Antreman.app
@@ -66,8 +86,6 @@ jobs:
         with:
           tag_name: build-${{ github.run_number }}
           name: Antrenman build ${{ github.run_number }}
-          body: |
-            İmzasız IPA — Sideloadly / AltStore ile ücretsiz Apple ID kullanarak yükle.
-            Commit: ${{ github.sha }}
+          body_path: manifest.md
           files: out/Antreman.ipa
           make_latest: true
