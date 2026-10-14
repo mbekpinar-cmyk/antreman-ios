@@ -3597,7 +3597,10 @@ function readyCardHtml(){
       <div class="msg" style="font-size:10.5px;color:var(--faint);margin-top:4px">${m.stale?`<span style="color:var(--amber)">${T("Eski veri — kestirme bugün çalışmamış")}</span> · `:''}${m.days ? T("Apple Watch verilerinden hesaplandı · / = son {n} gün ortancası",{n:m.days}) : T("Karşılaştırma için birkaç günlük veri birikmesi gerekiyor.")}</div>
     </div></div>`;
 }
-document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) requestHealth(false); });
+/* "Antrenman acildiginda" otomasyonu kestirmeyi uygulamayla AYNI ANDA calistirir;
+   dosya birkac saniye sonra yazilir. O yuzden acilistan sonra iki kez daha bak. */
+function healthAfterOpen(){ requestHealth(false); setTimeout(()=>requestHealth(true), 5000); setTimeout(()=>requestHealth(true), 15000); }
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) healthAfterOpen(); });
 window.runNativeDiag = function(){ nativeDiag = [["…","kontrol ediliyor"]]; render(); native("diag"); };
 window.testRest = function(){ startRest(20, "Test"); setTimeout(()=>native("diag"), 1500); };
 window.__fromNative = function(m){
@@ -4568,7 +4571,7 @@ applyLang();
 restoreLiveSession();     // migration'lardan ONCE — onlar save() cagiriyor ve
 runMigrations();          // o anda bellekteki live henuz null oldugu icin
 render();                 // diskteki kaydi silerlerdi
-if(S.setup) requestHealth(false);   // iOS uygulamasi: acilista bir kez Health oku
+if(S.setup) healthAfterOpen();   // iOS uygulamasi: acilista saglik dosyasini oku
 window.addEventListener("beforeunload", e => { if(live){ e.preventDefault(); e.returnValue=""; } });
 </script>
 </body>
