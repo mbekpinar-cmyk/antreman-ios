@@ -7,6 +7,36 @@ import WidgetKit
 struct AntremanWidgetBundle: WidgetBundle {
     var body: some Widget {
         RestLiveActivity()
+        TestWidget()
+    }
+}
+
+// MARK: - Teshis: sade ana ekran widget'i
+// Bu gorunuyorsa widget eklentisi telefonda calisiyor demektir.
+struct TestEntry: TimelineEntry { let date: Date }
+
+struct TestProvider: TimelineProvider {
+    func placeholder(in context: Context) -> TestEntry { TestEntry(date: .now) }
+    func getSnapshot(in context: Context, completion: @escaping (TestEntry) -> Void) { completion(TestEntry(date: .now)) }
+    func getTimeline(in context: Context, completion: @escaping (Timeline<TestEntry>) -> Void) {
+        completion(Timeline(entries: [TestEntry(date: .now)], policy: .never))
+    }
+}
+
+struct TestWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AntremanTest", provider: TestProvider()) { entry in
+            VStack(alignment: .leading, spacing: 6) {
+                Image(systemName: "dumbbell.fill").foregroundStyle(amber)
+                Text("Widget çalışıyor").font(.headline).foregroundStyle(.white)
+                Text(entry.date, style: .time).font(.caption).foregroundStyle(muted)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .containerBackground(card, for: .widget)
+        }
+        .configurationDisplayName("Antrenman test")
+        .description("Widget eklentisinin çalıştığını gösterir.")
+        .supportedFamilies([.systemSmall])
     }
 }
 
@@ -68,7 +98,6 @@ struct RestLiveActivity: Widget {
             }
             .keylineTint(amber)
         }
-        .supplementalActivityFamilies([.small])
     }
 }
 
@@ -80,7 +109,7 @@ struct CountdownText: View {
         if context.isStale {
             Image(systemName: "checkmark")
         } else {
-            Text(timerInterval: context.state.range, countsDown: true, showsHours: false)
+            Text(timerInterval: context.state.range, countsDown: true)
                 .monospacedDigit()
                 .multilineTextAlignment(.trailing)
         }
@@ -133,14 +162,9 @@ struct RestButtons: View {
 
 struct RestLockScreenView: View {
     let context: ActivityViewContext<RestAttributes>
-    @Environment(\.activityFamily) private var family
 
     var body: some View {
-        if family == .small {
-            watchView
-        } else {
-            phoneView
-        }
+        phoneView
     }
 
     /// Kilit ekrani / bildirim merkezi.
