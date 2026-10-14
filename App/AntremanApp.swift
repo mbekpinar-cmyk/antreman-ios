@@ -12,6 +12,8 @@ struct AntremanApp: App {
                 .ignoresSafeArea()
                 .background(Color(red: 6 / 255, green: 7 / 255, blue: 8 / 255).ignoresSafeArea())
                 .preferredColorScheme(.dark)
+                // Kestirme verileri antrenman://health?d=... ile gonderir
+                .onOpenURL { url in HealthFile.receive(url) }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {

@@ -3529,13 +3529,32 @@ function parseHealthText(txt){
     const nums = (mm[2].replace(/(\d),(\d)/g,"$1.$2").match(/-?\d+(?:\.\d+)?/g) || []).map(Number).filter(n => isFinite(n));
     if(!nums.length) return;
     let v = key === "sleepH" ? nums.reduce((a,b)=>a+b,0) : nums.reduce((a,b)=>a+b,0)/nums.length;
-    if(key === "sleepH"){ if(v > 1440) v = v/3600; else if(v > 24) v = v/60; }
+    if(key === "sleepH"){
+      /* "7 hr 24 min", "7 h 24 m", "7 sa 24 dk", "7:24" gibi sure metinleri */
+      const t = mm[2].toLowerCase().replace(/(\d),(\d)/g,"$1.$2");
+      const hm = t.match(/(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours|sa|saat|t|tuntia)\b/);
+      const mn = t.match(/(\d+(?:\.\d+)?)\s*(m|min|mins|minute|minutes|dk|dakika|min\.)\b/);
+      const cl = t.match(/^\s*(\d{1,2}):(\d{2})(?::\d{2})?\s*$/);
+      if(cl) v = +cl[1] + (+cl[2])/60;
+      else if(hm || mn) v = (hm ? +hm[1] : 0) + (mn ? +mn[1]/60 : 0);
+      else if(v > 1440) v = v/3600; else if(v > 24) v = v/60;
+    }
     if(v > 0) out[key] = Math.round(v*100)/100;
   });
   return out;
 }
 function dayISO(d){ const z = n => String(n).padStart(2,"0"); return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate()); }
+/* Gunun ilk acilisinda bugun icin veri yoksa kestirmeyi bir kez kendimiz calistiralim. */
+function maybeRunShortcut(f){
+  const today = dayISO(new Date());
+  const fresh = f && f.status === "ok" && dayISO(new Date(f.mtime||0)) === today;
+  if(fresh || S.hsTried === today) return;
+  S.hsTried = today; save();
+  native("runShortcut");
+}
+window.runHealthShortcut = function(){ native("runShortcut"); };
 function onHealthFile(f){
+  maybeRunShortcut(f);
   if(!f || f.status !== "ok"){ onHealth({status: "missing"}); return; }
   const today = parseHealthText(f.text);
   const fresh = (Date.now() - (f.mtime||0)) < 20*3600*1000;
@@ -3564,8 +3583,8 @@ function readyCardHtml(){
   const m = healthData;
   if(!m) return `<div class="readycard"><div class="grow"><div class="lbl">${T("Hazırlık")}</div><div class="msg">${T("Apple Health okunuyor…")}</div></div></div>`;
   if(m.status !== "ok"){
-    return `<div class="readycard" onclick="requestHealth(true)"><div class="grow"><div class="lbl">${T("Hazırlık")}</div>
-      <div class="msg">${m.status === "missing" ? T("Sağlık kestirmesi henüz dosya yazmamış (Dosyalar › Antrenman › saglik.txt). Dokun: yeniden dene.") : T("saglik.txt okundu ama içinde değer bulunamadı. Dokun: yeniden dene.")}</div></div></div>`;
+    return `<div class="readycard" onclick="runHealthShortcut()"><div class="grow"><div class="lbl">${T("Hazırlık")}</div>
+      <div class="msg">${m.status === "missing" ? T("\"Antrenman Saglik\" kestirmesinden henüz veri gelmedi. Dokun: kestirmeyi çalıştır.") : T("Kestirmeden veri geldi ama içinde değer bulunamadı. Dokun: tekrar çalıştır.")}</div></div></div>`;
   }
   const r = readinessOf(m), t = m.today||{}, b = m.base||{};
   if(!r) return `<div class="readycard" onclick="requestHealth(true)"><div class="grow"><div class="lbl">${T("Hazırlık")}</div><div class="msg">${T("Bu gece için henüz veri yok.")}</div></div></div>`;
@@ -3583,7 +3602,7 @@ function readyCardHtml(){
       if(Math.abs(d) > tol){ const good = higherBetter ? d > 0 : d < 0; ar = ` <span style="color:${good?'var(--green)':'var(--red)'}">${d>0?'↑':'↓'}</span>`; } }
     return `<b>${fmt(v)}</b>${ar}${base?` <span style="color:var(--faint)">/ ${fmt(base)}</span>`:''}`;
   };
-  return `<div class="readycard" onclick="requestHealth(true)" style="align-items:flex-start">
+  return `<div class="readycard" onclick="runHealthShortcut()" style="align-items:flex-start">
     <div style="flex:none;width:52px;height:52px;border-radius:50%;border:3px solid ${col};display:grid;place-items:center;font-family:var(--fn);font-size:20px;font-weight:800">${r.score}</div>
     <div class="grow">
       <div class="lbl">${T("Bugünkü Hazırlık")}${r.partial?` <span style="color:var(--faint)">· ${T("eksik veri")}</span>`:''}</div>
@@ -4011,6 +4030,8 @@ function runMigrations(){
    ========================================================= */
 /* ---- CEVIRI SOZLUGU (anahtar = Turkce kaynak metin) ---- */
 Object.assign(I18N.en, {
+"\"Antrenman Saglik\" kestirmesinden henüz veri gelmedi. Dokun: kestirmeyi çalıştır.": "No data from the \"Antrenman Saglik\" shortcut yet. Tap to run it.",
+"Kestirmeden veri geldi ama içinde değer bulunamadı. Dokun: tekrar çalıştır.": "The shortcut sent data but no values were found. Tap to run it again.",
 "Sağlık kestirmesi henüz dosya yazmamış (Dosyalar › Antrenman › saglik.txt). Dokun: yeniden dene.": "The health shortcut hasn't written its file yet (Files › Antrenman › saglik.txt). Tap to retry.",
 "saglik.txt okundu ama içinde değer bulunamadı. Dokun: yeniden dene.": "saglik.txt was read but no values were found. Tap to retry.",
 "Eski veri — kestirme bugün çalışmamış": "Old data — the shortcut didn't run today",
@@ -4285,6 +4306,8 @@ Object.assign(I18N.en, {
 "Yarım kalmış bir {name} antrenmanın var{ago}.\n\nKaldığın yerden devam etmek ister misin?\n\nTamam = devam et\nİptal = bu antrenmanı sil": "You have an unfinished {name} workout{ago}.\n\nDo you want to continue where you left off?\n\nOK = continue\nCancel = delete this workout"
 });
 Object.assign(I18N.fi, {
+"\"Antrenman Saglik\" kestirmesinden henüz veri gelmedi. Dokun: kestirmeyi çalıştır.": "\"Antrenman Saglik\" -pikakomennosta ei ole vielä tullut tietoja. Napauta ajaaksesi sen.",
+"Kestirmeden veri geldi ama içinde değer bulunamadı. Dokun: tekrar çalıştır.": "Pikakomento lähetti tietoja, mutta arvoja ei löytynyt. Napauta ajaaksesi uudelleen.",
 "Sağlık kestirmesi henüz dosya yazmamış (Dosyalar › Antrenman › saglik.txt). Dokun: yeniden dene.": "Terveyspikakomento ei ole vielä kirjoittanut tiedostoaan (Tiedostot › Antrenman › saglik.txt). Napauta yrittääksesi uudelleen.",
 "saglik.txt okundu ama içinde değer bulunamadı. Dokun: yeniden dene.": "saglik.txt luettiin, mutta arvoja ei löytynyt. Napauta yrittääksesi uudelleen.",
 "Eski veri — kestirme bugün çalışmamış": "Vanhaa tietoa — pikakomento ei ajettu tänään",

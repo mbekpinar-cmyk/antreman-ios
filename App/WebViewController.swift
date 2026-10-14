@@ -87,6 +87,8 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
             // Kestirmeler uygulamasinin her sabah yazdigi saglik.txt (Dosyalar › Antrenman).
             // Ucretsiz imzada HealthKit yetkisi verilmedigi icin Health'e bu yoldan ulasiyoruz.
             send(HealthFile.read())
+        case "runShortcut":
+            HealthFile.runShortcut()
         case "diag":
             Task { await sendDiagnostics() }
         case "lang":
