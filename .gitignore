@@ -1,0 +1,7 @@
+Antreman.xcodeproj/
+App/Info.plist
+Widget/Info.plist
+build/
+out/
+*.ipa
+.DS_Store
