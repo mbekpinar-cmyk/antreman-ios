@@ -1,0 +1,30 @@
+name: Shortcut
+
+on:
+  push:
+    branches: [main]
+    paths: ["shortcut/**", ".github/workflows/shortcut.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sign:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and sign
+        run: |
+          python3 shortcut/make_shortcut.py unsigned.shortcut
+          shortcuts sign --mode anyone --input unsigned.shortcut --output "Antrenman-Saglik.shortcut"
+          ls -l *.shortcut
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: shortcut-${{ github.run_number }}
+          name: Antrenman Sağlık kestirmesi ${{ github.run_number }}
+          body: Safari'de aç → Add Shortcut.
+          files: Antrenman-Saglik.shortcut
+          make_latest: false
