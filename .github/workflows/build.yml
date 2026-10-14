@@ -68,6 +68,13 @@ jobs:
             echo "- Uyari sayisi: $(grep -c 'warning:' build.log || true)"
           } | tee manifest.md
 
+      - name: Embed entitlements (ad-hoc)
+        run: |
+          APP=build/Build/Products/Release-iphoneos/Antreman.app
+          codesign --force --sign - "$APP/PlugIns/AntremanWidget.appex"
+          codesign --force --sign - --entitlements App/Antreman.entitlements "$APP"
+          codesign -d --entitlements - --xml "$APP" | plutil -p - | tee -a manifest.md
+
       - name: Package IPA
         run: |
           APP=build/Build/Products/Release-iphoneos/Antreman.app

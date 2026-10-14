@@ -83,6 +83,12 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
             } else {
                 UIImpactFeedbackGenerator(style: style == "medium" ? .medium : .light).impactOccurred()
             }
+        case "health":
+            let force = (body["force"] as? Bool) ?? false
+            Task {
+                let payload = await HealthManager.shared.fetch(force: force)
+                self.send(payload)
+            }
         case "diag":
             Task { await sendDiagnostics() }
         case "lang":
@@ -124,6 +130,7 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
                 ["Aktif Live Activity", String(Activity<RestAttributes>.activities.count)],
                 ["Son Live Activity denemesi", RestController.shared.lastActivityResult],
                 ["Bildirim izni", notif],
+                ["Health", HealthManager.shared.lastStatus],
             ],
         ])
     }
