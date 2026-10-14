@@ -83,13 +83,12 @@ struct RestLiveActivity: Widget {
                     .padding(.horizontal, 4)
                 }
             } compactLeading: {
-                Image(systemName: "timer")
-                    .foregroundStyle(amber)
-            } compactTrailing: {
                 CountdownText(context: context)
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(amber)
-                    .frame(width: 44, alignment: .trailing)
+                    .frame(width: 44, alignment: .leading)
+            } compactTrailing: {
+                BatteryProgress(context: context)
             } minimal: {
                 CountdownText(context: context)
                     .font(.system(size: 11, weight: .bold, design: .rounded))
@@ -115,6 +114,54 @@ struct CountdownText: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                 .multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+/// "Enerji sarji": dinlendikce pil kirmizidan yesile dolar.
+/// Sistem sayaci (ProgressView timerInterval) maske olarak kullaniliyor — boylece
+/// uygulama calismadan, pil harcamadan iOS kendisi doldurur.
+struct BatteryProgress: View {
+    let context: ActivityViewContext<RestAttributes>
+    private let red = Color(red: 248 / 255, green: 113 / 255, blue: 113 / 255)
+    private let green = Color(red: 74 / 255, green: 222 / 255, blue: 128 / 255)
+    private let shell = Color(red: 86 / 255, green: 92 / 255, blue: 102 / 255)
+
+    var body: some View {
+        HStack(spacing: 1.5) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 4.5, style: .continuous)
+                    .stroke(shell, lineWidth: 1.6)
+                fill
+                    .padding(3)
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 8, weight: .black))
+                    .foregroundStyle(.white.opacity(context.isStale ? 0 : 0.9))
+            }
+            .frame(width: 30, height: 15)
+            RoundedRectangle(cornerRadius: 1.2)
+                .fill(shell)
+                .frame(width: 2.5, height: 6)
+        }
+    }
+
+    @ViewBuilder private var fill: some View {
+        let gradient = LinearGradient(colors: [red, amber, green], startPoint: .leading, endPoint: .trailing)
+        if context.isStale {
+            RoundedRectangle(cornerRadius: 2).fill(green)
+        } else {
+            gradient
+                .mask(
+                    ProgressView(timerInterval: context.state.range, countsDown: false) {
+                        EmptyView()
+                    } currentValueLabel: {
+                        EmptyView()
+                    }
+                    .progressViewStyle(.linear)
+                    .tint(.white)
+                    .scaleEffect(x: 1, y: 3.2, anchor: .center)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 2))
         }
     }
 }
