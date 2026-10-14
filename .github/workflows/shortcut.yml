@@ -18,8 +18,14 @@ jobs:
       - name: Build and sign
         run: |
           python3 shortcut/make_shortcut.py unsigned.shortcut
-          shortcuts sign --mode anyone --input unsigned.shortcut --output "Antrenman-Saglik.shortcut"
-          ls -l *.shortcut
+          sw_vers | tr '\n' ' ' | sed 's/^/::notice::/'; echo
+          for mode in anyone people-who-know-me; do
+            if OUT=$(shortcuts sign --mode $mode --input unsigned.shortcut --output "Antrenman-Saglik.shortcut" 2>&1); then
+              echo "::notice::imza tamam ($mode)"; ls -l *.shortcut; exit 0
+            fi
+            echo "::error::imza basarisiz ($mode): $(echo "$OUT" | tr '\n' ' ' | cut -c1-600)"
+          done
+          exit 1
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
