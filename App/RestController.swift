@@ -11,6 +11,9 @@ final class RestController {
     static let shared = RestController()
 
     private let notificationID = "rest-end"
+
+    /// Teshis ekrani icin: Live Activity son denemesinin sonucu.
+    private(set) var lastActivityResult = "henüz denenmedi"
     private let infoKey = "rest.info.v1"
 
     struct RestInfo: Codable {
@@ -147,6 +150,7 @@ final class RestController {
         if let existing = Activity<RestAttributes>.activities.first {
             if existing.attributes.workout == i.workout && existing.attributes.labels == i.labels {
                 await existing.update(content)
+                lastActivityResult = "güncellendi (\(existing.activityState))"
                 return
             }
             // Antrenman ya da dil degisti — sabit bilgiler degistirilemiyor, yenisini ac.
@@ -154,11 +158,15 @@ final class RestController {
                 await activity.end(nil, dismissalPolicy: .immediate)
             }
         }
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            lastActivityResult = "Live Activities kapalı (Ayarlar › Antrenman)"
+            return
+        }
         do {
-            _ = try Activity.request(attributes: attributes, content: content, pushType: nil)
+            let a = try Activity.request(attributes: attributes, content: content, pushType: nil)
+            lastActivityResult = "başladı (\(a.activityState))"
         } catch {
-            print("Live Activity baslatilamadi: \(error)")
+            lastActivityResult = "HATA: \(error.localizedDescription) — \(String(describing: error))"
         }
     }
 

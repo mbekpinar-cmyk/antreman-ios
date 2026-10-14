@@ -3255,6 +3255,14 @@ function renderSettings(){
   $app.innerHTML = `
     <div class="hero"><div class="name">${T("Ayarlar")}</div></div>
     ${warn}
+    ${NATIVE ? `<div class="card">
+      <div class="row"><div class="lbl">iOS durumu</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn sm ghost" style="width:auto;padding:9px 12px" onclick="testRest()">20 sn test</button>
+          <button class="btn sm ghost" style="width:auto;padding:9px 12px" onclick="runNativeDiag()">Kontrol et</button></div></div>
+      ${(nativeDiag||[]).map(r=>`<div class="row" style="align-items:flex-start;gap:12px"><div class="lbl" style="flex:none">${esc(r[0])}</div>
+        <div style="font-family:var(--fn);font-size:12px;text-align:right;word-break:break-word;color:${/HATA|YOK|KAPALI|REDDED/.test(r[1])?'var(--red)':'var(--muted)'}">${esc(r[1])}</div></div>`).join("")}
+    </div>` : ""}
     <div class="card">
       <div class="row"><div class="lbl">${T("Ad")}</div>
         <div><input type="text" value="${esc(S.name||'')}" onchange="S.name=this.value; save()" placeholder="—" style="width:140px;text-align:left"></div></div>
@@ -3471,8 +3479,12 @@ function restPayload(){
   };
 }
 /* Native taraftan gelenler: kilit ekranindaki +30 sn / Bitir, uygulama geri acilinca esitleme */
+let nativeDiag = null;
+window.runNativeDiag = function(){ nativeDiag = [["…","kontrol ediliyor"]]; render(); native("diag"); };
+window.testRest = function(){ startRest(20, "Test"); setTimeout(()=>native("diag"), 1500); };
 window.__fromNative = function(m){
   try{
+    if(m && m.type === "diag"){ nativeDiag = m.rows || []; if(view === "settings") render(); return; }
     if(!m || m.type !== "restSync") return;
     const end = +m.end || 0;
     if(end > Date.now() + 300){

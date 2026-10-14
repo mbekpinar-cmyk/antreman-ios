@@ -1,4 +1,6 @@
+import ActivityKit
 import UIKit
+import UserNotifications
 import WebKit
 
 /// Uygulamanin govdesi: web uygulamasinin (Web/index.html) bire bir kopyasini
@@ -81,11 +83,49 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
             } else {
                 UIImpactFeedbackGenerator(style: style == "medium" ? .medium : .light).impactOccurred()
             }
+        case "diag":
+            Task { await sendDiagnostics() }
         case "lang":
             if let l = body["lang"] as? String { lang = l }
         default:
             break
         }
+    }
+
+    // MARK: - Teshis (Ayarlar › iOS durumu)
+
+    private func sendDiagnostics() async {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let version = "\(info["CFBundleShortVersionString"] ?? "?") (\(info["CFBundleVersion"] ?? "?"))"
+        let plugins = Bundle.main.builtInPlugInsURL
+        let widgetURL = plugins?.appendingPathComponent("AntremanWidget.appex")
+        let widgetBundle = widgetURL.flatMap { Bundle(url: $0) }
+        let pluginList = (try? FileManager.default.contentsOfDirectory(atPath: plugins?.path ?? ""))?.joined(separator: ", ") ?? "yok"
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        let notif: String
+        switch settings.authorizationStatus {
+        case .authorized: notif = "izin var"
+        case .denied: notif = "REDDEDİLMİŞ"
+        case .notDetermined: notif = "henüz sorulmadı"
+        case .provisional: notif = "geçici"
+        case .ephemeral: notif = "geçici"
+        @unknown default: notif = "bilinmiyor"
+        }
+        let auth = ActivityAuthorizationInfo()
+        send([
+            "type": "diag",
+            "rows": [
+                ["iOS", UIDevice.current.systemVersion],
+                ["Uygulama sürümü", version],
+                ["Uygulama kimliği", Bundle.main.bundleIdentifier ?? "?"],
+                ["Eklentiler (PlugIns)", pluginList],
+                ["Widget kimliği", widgetBundle?.bundleIdentifier ?? "YOK — eklenti yüklenmemiş"],
+                ["Live Activities izni", auth.areActivitiesEnabled ? "açık" : "KAPALI"],
+                ["Aktif Live Activity", String(Activity<RestAttributes>.activities.count)],
+                ["Son Live Activity denemesi", RestController.shared.lastActivityResult],
+                ["Bildirim izni", notif],
+            ],
+        ])
     }
 
     // MARK: - Native -> sayfa
