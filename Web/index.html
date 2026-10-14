@@ -3504,7 +3504,8 @@ function readinessOf(m){
   const parts = [];
   if(t.hrv != null && b.hrv)  parts.push({w:.4,  v: clamp01(.5 + (t.hrv/b.hrv - 1)*2.5)});   // ±%20 tam aralik
   if(t.rhr != null && b.rhr)  parts.push({w:.25, v: clamp01(.5 + (b.rhr - t.rhr)/8)});       // ±4 atim
-  if(t.sleepH != null)        parts.push({w:.35, v: clamp01((t.sleepH - 5)/3)});             // 5 sa=0, 8 sa=1
+  /* 12 saatten uzun uyku neredeyse her zaman "yatakta" + uyku kayitlarinin ust uste toplanmasi — kullanma */
+  if(t.sleepH != null && t.sleepH <= 12) parts.push({w:.35, v: clamp01((t.sleepH - 5)/3)});   // 5 sa=0, 8 sa=1
   if(!parts.length) return null;
   const W = parts.reduce((a,p)=>a+p.w,0);
   let score = Math.round(10 * parts.reduce((a,p)=>a+p.w*p.v,0) / W);
@@ -3523,7 +3524,7 @@ function parseHealthText(txt){
     if(/^(resp|solunum|breath|hengitys)/.test(k)) return "resp";
     return null;
   };
-  String(txt||"").split(/\r?\n/).forEach(line => {
+  String(txt||"").split(/[;\r\n]+/).forEach(line => {
     const mm = line.match(/^\s*([^=:]+)[=:](.*)$/); if(!mm) return;
     const key = keyOf(mm[1]); if(!key) return;
     const nums = (mm[2].replace(/(\d),(\d)/g,"$1.$2").match(/-?\d+(?:\.\d+)?/g) || []).map(Number).filter(n => isFinite(n));

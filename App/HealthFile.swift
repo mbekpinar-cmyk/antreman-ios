@@ -56,6 +56,7 @@ enum HealthFile {
         guard let d = attrs?[.modificationDate] as? Date else { return u.lastPathComponent }
         let f = DateFormatter()
         f.dateFormat = "d.M HH:mm"
-        return "\(u.lastPathComponent) · \(f.string(from: d))"
+        let raw = (try? String(contentsOf: u, encoding: .utf8)) ?? ""
+        return "\(f.string(from: d)) · \(raw.prefix(300))"
     }
 }
