@@ -87,14 +87,14 @@ struct RestLiveActivity: Widget {
                     .foregroundStyle(amber)
             } compactTrailing: {
                 CountdownText(context: context)
-                    .font(.callout.weight(.semibold))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(amber)
-                    .frame(maxWidth: 46)
+                    .frame(width: 44, alignment: .trailing)
             } minimal: {
                 CountdownText(context: context)
-                    .font(.caption2.weight(.bold))
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(amber)
-                    .frame(maxWidth: 34)
+                    .frame(width: 32)
             }
             .keylineTint(amber)
         }
@@ -109,8 +109,11 @@ struct CountdownText: View {
         if context.isStale {
             Image(systemName: "checkmark")
         } else {
-            Text(timerInterval: context.state.range, countsDown: true)
+            // showsHours: false — yoksa sistem "0:00:20" icin yer ayirip "0:..." diye kesiyor.
+            Text(timerInterval: context.state.range, countsDown: true, showsHours: false)
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .multilineTextAlignment(.trailing)
         }
     }
