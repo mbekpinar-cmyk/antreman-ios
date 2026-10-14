@@ -23,7 +23,7 @@ jobs:
             if OUT=$(shortcuts sign --mode $mode --input unsigned.shortcut --output "Antrenman-Saglik.shortcut" 2>&1); then
               echo "::notice::imza tamam ($mode)"; ls -l *.shortcut; exit 0
             fi
-            echo "::error::imza basarisiz ($mode): $(echo "$OUT" | tr '\n' ' ' | cut -c1-600)"
+            echo "::error::imza basarisiz ($mode): $(echo "$OUT" | grep -v "attribute string" | tr '\n' ' ' | cut -c1-600)"
           done
           exit 1
       - name: Release
