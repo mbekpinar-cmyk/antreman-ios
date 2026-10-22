@@ -19,6 +19,8 @@
   --cell:#0E0F11;
   --line:#232529;
   --line-hi:#33363C;
+  --plate-old:#4A4E56;
+  --plate-ghost:#6B7079;
   --text:#F7F7F8;
   --muted:#8B929C;
   --faint:#565C66;
@@ -464,6 +466,46 @@ body.resting #app{padding-bottom:calc(var(--nav-h) + 110px)}
   color:var(--faint);background:var(--cell);border:1px solid var(--line)}
 .pmodes button.on{color:#3A2604;background:var(--amber);border-color:var(--amber)}
 .wuplates{font-size:11px;color:var(--faint);margin:-6px 0 14px;line-height:1.7;font-family:var(--fn)}
+.wucard{padding:12px 13px 13px;margin:4px 0 6px}
+.wucard .pfoot{display:flex;align-items:center;gap:10px}
+.wucard .pfoot label{flex:1}
+.wutabs{display:grid;gap:6px;margin-bottom:12px}
+.wutab{min-height:50px;border-radius:12px;background:var(--cell);border:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 4px;color:var(--text)}
+.wutab .t{font-size:11.5px;font-weight:800}
+.wutab .v{font-family:var(--fn);font-size:12.5px;font-weight:700;color:var(--muted)}
+.wutab.on{background:var(--amber);border-color:var(--amber);color:#3A2604}
+.wutab.on .v{color:#3A2604}
+.wuhead{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.wubig{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.wubig .kg{font-family:var(--fn);font-size:26px;font-weight:800;color:var(--amber);letter-spacing:-.02em}
+.wubig .kg i{font-style:normal;font-size:12px;font-weight:700;color:var(--muted);margin-left:3px}
+.wubig .rp{font-family:var(--fn);font-size:14px;font-weight:700;color:var(--muted)}
+.wuside{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.wuside .k{font-size:9px;letter-spacing:.14em;font-weight:800;color:var(--muted)}
+.wuside .v{font-family:var(--fn);font-size:15px;font-weight:700;color:var(--text)}
+.wubar{margin:6px 0 4px}
+.wuact{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 10px}
+.wuact .verb{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--amber);margin-right:2px}
+.wuchip{background:var(--amber);color:#3A2604;font-family:var(--fn);font-size:15px;font-weight:800;padding:5px 10px;border-radius:8px}
+.wuact .cnt{font-size:11px;color:var(--muted);margin-left:2px}
+.wuleg{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:10px}
+.wuleg span{display:flex;align-items:center;gap:6px}
+.wuleg .sw{width:11px;height:11px;border-radius:3px;display:inline-block;box-sizing:border-box}
+.wuleg .sw.old{background:var(--plate-old)} .wuleg .sw.new{background:var(--amber)}
+.wuleg .sw.ghost{border:1.5px dashed var(--plate-ghost)}
+.wunext{width:100%;min-height:46px;border-radius:13px;background:var(--amber);color:#17130A;
+  font-size:14px;font-weight:800;margin-top:4px}
+.wunext:active{background:var(--amber-hi)}
+.bumpbox{background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.35);border-radius:14px;
+  padding:12px 14px;margin:0 0 12px}
+.bumpbox .bt{font-size:14px;font-weight:800;color:var(--green);margin-bottom:4px}
+.bumpbox .bs{font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:10px}
+.bumpbox .bs b{font-family:var(--fn);color:var(--amber)}
+.bumpbox .bb{display:flex;gap:8px}
+.bumpbox .bb button{flex:1;min-height:44px;border-radius:12px;font-size:13.5px;font-weight:800}
+.bumpbox .yes{background:var(--green);color:#06210F}
+.bumpbox .no{background:var(--cell);border:1px solid var(--line-hi);color:var(--text)}
 .hdelta{display:flex;align-items:center;gap:5px;font-size:11px;margin:2px 0 0}
 .hdelta.up{color:var(--green)} .hdelta.dn{color:var(--red)} .hdelta.same{color:var(--faint)}
 .hnote{font-size:10.5px;color:var(--faint);line-height:1.4;margin-top:3px}
@@ -1227,9 +1269,13 @@ function seedWeights(tests){
 /* Tek karar merkezi — hem canli ilerleme (progress()) hem gecmisteki
    "neden degisti" notu (decisionNote()) buradan besleniyor, ikisi arasinda
    mantik sapmasi olmasin diye. */
-function progressDecision(ex, reps, rpeArr, cur){
+/* ctx (istege bagli): {entry} — kararin ait oldugu gecmis kaydi (S.sessions
+   icindeki nesne). entry:null = henuz kaydedilmemis, gecmisin sonuna gelecek
+   seans (antrenman bitirilirken). Verilmezse "kolay seri" 0 sayilir. */
+function progressDecision(ex, reps, rpeArr, cur, ctx){
   if(cur === undefined) cur = S.weights[ex.id];
-  const d = progressDecisionRaw(ex, reps, rpeArr, cur);
+  const streak = ctx && ctx.entry !== undefined ? easyStreakBefore(ex, ctx.entry) : 0;
+  const d = progressDecisionRaw(ex, reps, rpeArr, cur, streak);
   /* Pinli makinede kilo listesi tanimliysa sonucu gercek pime oturt */
   const l = ladderOf(ex);
   if(l && d.weight != null && cur != null && d.tier !== "coarse_step_up"){
@@ -1238,7 +1284,81 @@ function progressDecision(ex, reps, rpeArr, cur){
   }
   return d;
 }
-function progressDecisionRaw(ex, reps, rpeArr, cur){
+/* ---- "KOLAY GELDI" --------------------------------------------------
+   Bir agirlik uzun suredir RPE 6'da kaliyorsa 2.5 kg'lik adimlar gercek
+   seviyeye haftalarca yetisemez. Kolay seans: tum setler hedefi tuttu ve
+   ortalama RPE dusuk. Arka arkaya kolay seanslarda artis buyur:
+   1. kolay seans +%10, 2. +%15, 3. ve sonrasi +%20 (her zaman en az 2 adim).
+   Kapsam: sec, sec4, acc. main haric (AMRAP seti zaten bunu yapiyor);
+   kaba kademeli pinli makineler haric (orada tekrar merdiveni var). */
+const EASY = { secRpe: 6.5, accRpe: 7, pct: [0.10, 0.15, 0.20], bumpRpe: 6, bumpPct: 0.15, maxBumps: 2 };
+function easyCriteria(ex, reps, rpeArr, cur){
+  if(!(ex.type === "sec" || ex.type === "sec4" || ex.type === "acc")) return false;
+  if(ex.type === "acc" && isCoarse(ex, cur)) return false;
+  const rs = (reps || []).slice(0, ex.sets);
+  if(rs.length < ex.sets || rs.some(r => r == null)) return false;
+  const rv = (rpeArr || []).slice(0, ex.sets).filter(v => v != null);
+  if(rv.length < 2) return false;                     // tek RPE'den karar verme
+  const avg = rv.reduce((a,b)=>a+b,0) / rv.length;
+  if(ex.type === "acc"){
+    const minReps = ex.min != null ? ex.min : Math.ceil((ex.total||0) / ex.sets);
+    const maxReps = ex.max != null ? ex.max : minReps;
+    return rs.every(r => r >= Math.max(minReps, maxReps - 1)) && avg <= EASY.accRpe + 1e-9;
+  }
+  return rs.every(r => r >= ex.target) && avg <= EASY.secRpe + 1e-9;
+}
+/* entry'den ONCEKI, ayni harekete ait arka arkaya kolay seans sayisi.
+   entry null / bulunamazsa: gecmisin sonundan geriye sayar. */
+function easyStreakBefore(ex, entry){
+  let idx = entry ? S.sessions.findIndex(s => s.entries && s.entries[ex.id] === entry) : -1;
+  if(idx < 0) idx = S.sessions.length;
+  let n = 0;
+  for(let j = idx - 1; j >= 0 && n < 5; j--){
+    const e = S.sessions[j].entries && S.sessions[j].entries[ex.id];
+    if(!entryUsable(e)) continue;
+    if(easyCriteria(ex, e.reps, e.rpe, e.kg)) n++; else break;
+  }
+  return n;
+}
+/* Makinede gercekten kurulabilen EN YAKIN deger (plaka ya da pim adimi).
+   Pim listesi varsa dokunmaz (progressDecision sonucu zaten pime oturtur). */
+function minPlate(){ return Math.min(...plateSet()); }
+function loadStep(ex, cur){
+  const lt = loadTypeOf(ex.id);
+  if(lt === "off") return stepOf(ex, cur) || 2.5;
+  return lt === "single" ? minPlate() : minPlate()*2;
+}
+function loadableRound(ex, w, cur){
+  if(ladderOf(ex)) return w;
+  const st = loadStep(ex, cur);
+  return r2(Math.round(w/st + 1e-9) * st);
+}
+function easyJump(ex, cur, streak){
+  const pct = EASY.pct[Math.min(streak, EASY.pct.length - 1)];
+  const w = Math.max(loadableRound(ex, cur*(1+pct), cur), r2(cur + incOf(ex)*2));
+  return {weight:w, pct};
+}
+/* Seans ici oneri: ilk set RPE <= 6 ise kalan setler icin +%15 */
+function bumpTarget(ex, kg){
+  if(kg == null) return null;
+  const l = ladderOf(ex);
+  if(l){
+    const ups = l.filter(x => x > kg + 0.001);
+    return ups.length ? nearestRung(ups, kg*(1+EASY.bumpPct)) : null;
+  }
+  return Math.max(loadableRound(ex, kg*(1+EASY.bumpPct), kg), r2(kg + incOf(ex)));
+}
+function canOfferBump(ex, en){
+  if(!(ex.type === "sec" || ex.type === "sec4" || ex.type === "acc")) return false;
+  if(ex.type === "acc" && isCoarse(ex, en.kg)) return false;
+  if(en.kg == null || en.noBump || (en.bumps||0) >= EASY.maxBumps) return false;
+  if(en.reps[0] == null || en.rpe[0] == null || en.rpe[0] > EASY.bumpRpe) return false;
+  if(en.reps.slice(1).some(r => r != null)) return false;   // sadece ilk setten sonra
+  const need = ex.type === "acc" ? (ex.min != null ? ex.min : Math.ceil((ex.total||0)/ex.sets)) : ex.target;
+  return en.reps[0] >= need;
+}
+
+function progressDecisionRaw(ex, reps, rpeArr, cur, streak){
   if(cur == null) return {weight:null, tier:"nodata"};
   const inc = incOf(ex);
   const rpeVals = (rpeArr||[]).filter(v=>v!=null);
@@ -1274,6 +1394,10 @@ function progressDecisionRaw(ex, reps, rpeArr, cur){
       const floor = cur + inc*2;
       const weight = Math.max(Math.min(est, cap), floor);
       return {weight, tier:"recalibrate", last, ratio, avgRpe, est, cap};
+    }
+    if(easyCriteria(ex, reps, rpeArr, cur)){
+      const j = easyJump(ex, cur, streak || 0);
+      return {weight:j.weight, tier:"easy_jump", pct:j.pct, streak:(streak||0)+1, last, ratio, avgRpe};
     }
     /* Hedefin 2-3 kati — RPE ne olursa olsun cift artis, tekrar sayisi
        kendi basina yeterli bir sinyal. */
@@ -1337,6 +1461,10 @@ function progressDecisionRaw(ex, reps, rpeArr, cur){
       return {weight:cur, tier:"acc_missed", sum, minReps, worst, avgRpe};
     }
     const worst = Math.min(...filled);
+    if(easyCriteria(ex, reps, rpeArr, cur)){
+      const j = easyJump(ex, cur, streak || 0);
+      return {weight:j.weight, tier:"easy_jump", pct:j.pct, streak:(streak||0)+1, sum, minReps, maxReps, worst, avgRpe};
+    }
     const repPos = maxReps > minReps ? Math.max(0, Math.min(1, (worst-minReps)/(maxReps-minReps))) : 1;
     const rpePos = avgRpe != null ? Math.max(0, Math.min(1, (10-avgRpe)/4)) : repPos;
     const score = 0.4*repPos + 0.6*rpePos;
@@ -1371,12 +1499,124 @@ function nextTargetReps(ex){
   return ex.min != null ? ex.min : null;
 }
 
-function warmups(ex){
-  const w = S.weights[ex.id];
-  if(w == null) return [];
-  if(ex.type === "main") return [0.6,0.7,0.85].map(p => mround(w*p,2.5)).filter(x=>x>=2.5);
-  if(ex.type === "sec" || ex.type === "sec4") return [0.5,0.75].map(p => mround(w*p,2.5)).filter(x=>x>=2.5);
+/* =========================================================
+   ISINMA — "SADECE EKLE"
+   Isinma agirliklari yuzdeyle degil, calisma agirliginin PLAKA DIZILIMINDEN
+   turetilir: once agir plakalar takilir, her isinma o dizilimin ilk birkac
+   plakasidir. Isinmadan calismaya gecerken sadece plaka EKLENIR, hic
+   cikarilmaz; toplam plaka hareketi calisma setindeki plaka sayisina iner.
+   main: en fazla 2 isinma (~%40-72 ve ~%75-93), sec/sec4: 1 isinma (~%40-78),
+   acc: isinma yok.
+   ========================================================= */
+const WU_RULES = {
+  main: [ {lo:0.40, hi:0.72, ideal:0.55}, {lo:0.75, hi:0.93, ideal:0.85} ],
+  sec:  [ {lo:0.40, hi:0.78, ideal:0.60} ],
+};
+function wuRulesOf(ex){
+  if(ex.type === "main") return WU_RULES.main;
+  if(ex.type === "sec" || ex.type === "sec4") return WU_RULES.sec;
   return [];
+}
+/* target'a (her taraf) tam esit, buyukten kucuge sirali plaka dizilimleri.
+   En fazla maxCount plaka; arama kucuk (6 plaka cesidi), sonuc sayisi sinirli. */
+function stackCandidates(target, maxCount){
+  const ps = plateSet(), out = [];
+  const tgt = Math.round(target*100);
+  (function dfs(i, rem, cur){
+    if(out.length >= 400) return;
+    if(rem === 0){ out.push(cur.slice()); return; }
+    if(cur.length >= maxCount) return;
+    for(let k = i; k < ps.length; k++){
+      const p = Math.round(ps[k]*100);
+      if(p > rem) continue;
+      if(p * (maxCount - cur.length) < rem) break;   // kalan yuvalar yetmez (daha kucukler hic yetmez)
+      cur.push(ps[k]); dfs(k, rem - p, cur); cur.pop();
+    }
+  })(0, tgt, []);
+  return out;
+}
+/* Bir dizilimin onekleri arasindan kurallara en uygun isinma duraklarini sec. */
+function pickWarmPrefixes(stack, rules){
+  const total = stack.reduce((a,b)=>a+b,0);
+  if(total <= 0) return {picks:[], dist:0};
+  const fr = [];   // fr[k-1] = ilk k plakanin orani (k = 1..n-1)
+  let acc = 0;
+  for(let k = 1; k < stack.length; k++){ acc += stack[k-1]; fr.push(acc/total); }
+  /* Kurallar artan sirada; her biri bir oncekinden SONRAKI bir onek almali. */
+  let best = {picks:[], dist:0};
+  (function go(ri, minK, picks, dist){
+    if(ri === rules.length){
+      if(picks.length > best.picks.length || (picks.length === best.picks.length && dist < best.dist))
+        best = {picks:picks.slice(), dist};
+      return;
+    }
+    const r = rules[ri];
+    go(ri+1, minK, picks, dist);                       // bu kurali bos gec
+    for(let k = minK; k <= fr.length; k++){
+      const f = fr[k-1];
+      if(f < r.lo - 1e-9 || f > r.hi + 1e-9) continue;
+      picks.push({k, f, rule:ri}); go(ri+1, k+1, picks, dist + Math.abs(f - r.ideal)); picks.pop();
+    }
+  })(0, 1, [], 0);
+  return best;
+}
+/* Isinma + calisma plani. kg = toplam calisma agirligi (kayittaki deger).
+   Donus: { plates:bool, stack:[her taraf, buyukten kucuge], per, steps:[...] }
+   steps: isinmalar sirayla, en sonda calisma; her biri {kg, per, reps, count, work}
+   count = o adimda takili plaka sayisi (stack'in ilk count plakasi). */
+function warmPlan(ex, kg){
+  if(kg == null || ex.type === "bw") return {plates:false, stack:[], per:null, steps:[]};
+  const lt = loadTypeOf(ex.id);
+  const rules = wuRulesOf(ex);
+  const repsFor = (n, i) => ex.type === "main" ? (n === 1 ? 5 : [6,3][i]) : 8;
+
+  if(lt === "off"){
+    /* Pinli makine — plaka yok; yuzdeyle, makinede secilebilir degere oturt */
+    const l = ladderOf(ex), st = stepOf(ex, kg) || 2.5;
+    let ws = rules.map(r => {
+      const raw = kg * r.ideal;
+      return l ? (l.filter(x => x <= raw + 0.001).pop() ?? null) : Math.floor(raw/st + 1e-9)*st;
+    }).filter(w => w != null && w > 0 && w < kg - 0.001);
+    ws = ws.filter((w,i) => i === 0 || w > ws[i-1] + 0.001);
+    const steps = ws.map((w,i) => ({kg:r2(w), per:null, reps:repsFor(ws.length, i), count:0, work:false}));
+    steps.push({kg, per:null, reps:null, count:0, work:true});
+    return {plates:false, stack:[], per:null, steps};
+  }
+
+  const per = perSideKg(ex.id, kg);
+  const greedy = platesFor(per);
+  const toTotal = p => r2(lt === "single" ? p : p*2);
+  let stack = greedy.plates, picks = [];
+  if(rules.length && stack.length){
+    /* Adaylar: en az plakali dizilim ve bir fazlasi. Siralama:
+       1) en az bir isinma bulunabilmeli, 2) daha az plaka, 3) daha cok isinma,
+       4) alisilmis (aç gözlü) dizilim, 5) hedef oranlara yakinlik. */
+    const n0 = greedy.plates.length;
+    const gKey = greedy.plates.join(",");
+    const cands = stackCandidates(greedy.exact, n0 + 1);
+    if(!cands.length) cands.push(greedy.plates.slice());
+    let bestKey = null;
+    cands.forEach(c => {
+      const pk = pickWarmPrefixes(c, rules);
+      const key = [pk.picks.length ? 0 : 1, c.length, -pk.picks.length, c.join(",") === gKey ? 0 : 1, pk.dist];
+      const better = !bestKey || key.some((v,i) => {
+        for(let j = 0; j < i; j++) if(Math.abs(key[j]-bestKey[j]) > 1e-9) return false;
+        return v < bestKey[i] - 1e-9;
+      });
+      if(better){ bestKey = key; stack = c; picks = pk.picks; }
+    });
+  }
+  const steps = picks.map((p,i) => {
+    const ps = r2(stack.slice(0, p.k).reduce((a,b)=>a+b,0));
+    return {kg:toTotal(ps), per:ps, reps:repsFor(picks.length, picks.length === 1 ? (p.rule) : i), count:p.k, work:false};
+  });
+  steps.push({kg, per, reps:null, count:stack.length, work:true});
+  return {plates:true, stack, per, exact:greedy.exact, left:greedy.left, steps};
+}
+/* Geriye uyum: sadece isinma agirliklari (toplam kg) */
+function warmups(ex, kg){
+  const w = kg != null ? kg : S.weights[ex.id];
+  return warmPlan(ex, w).steps.filter(s => !s.work).map(s => s.kg);
 }
 
 /* =========================================================
@@ -1487,88 +1727,181 @@ function lastKgFor(exId){
   return null;
 }
 
-/* Plakalarin gorsel dizilimi — sabit viewBox, boylece her agirlikta ayni olcek */
-function plateBarSVG(list){
-  const H = 78, CY = 40;
+/* Plakalarin gorsel dizilimi — sabit viewBox, boylece her agirlikta ayni olcek.
+   status[i]: 'old' = zaten takili (gri), 'new' = simdi takilacak (amber),
+   'ghost' = sonraki adimlarda takilacak (kesik cizgi). Verilmezse hepsi 'new'. */
+function plateBarSVG(list, status, vbW){
+  const H = 78, CY = 40, VW = vbW || 300;
   const hOf = p => 12 + 48*Math.pow(p/20, .6);
   const wOf = p => 7 + 9*Math.sqrt(p/20);
   let x = 16, parts = "";
-  list.forEach(p=>{
+  list.forEach((p, i)=>{
+    const st = status ? status[i] : "new";
     const h = hOf(p), w = wOf(p);
-    const fill = p >= 5 ? "var(--amber)" : "var(--amber-deep)";
-    parts += `<rect x="${x}" y="${CY-h/2}" width="${w}" height="${h}" rx="2.5" fill="${fill}"/>`;
-    if(w >= 9) parts += `<text x="${x+w/2}" y="${CY}" transform="rotate(-90 ${x+w/2} ${CY})"
+    if(st === "ghost"){
+      parts += `<rect x="${x+0.75}" y="${CY-h/2+0.75}" width="${w-1.5}" height="${h-1.5}" rx="2.5" fill="none"
+        stroke="var(--plate-ghost)" stroke-width="1.5" stroke-dasharray="3 2.5"/>`;
+    } else {
+      const fill = st === "old" ? "var(--plate-old)" : (p >= 5 ? "var(--amber)" : "var(--amber-deep)");
+      parts += `<rect x="${x}" y="${CY-h/2}" width="${w}" height="${h}" rx="2.5" fill="${fill}"/>`;
+    }
+    if(w >= 9 && h >= fmtP(p).length*5.3 + 2){     // yazi plakaya sigmiyorsa (1.25) etiketsiz
+      const tc = st === "ghost" ? "var(--muted)" : st === "old" ? "var(--text)" : "#3A2604";
+      parts += `<text x="${x+w/2}" y="${CY}" transform="rotate(-90 ${x+w/2} ${CY})"
       text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="700"
-      fill="#3A2604" font-family="ui-monospace,monospace">${fmtP(p)}</text>`;
+      fill="${tc}" font-family="ui-monospace,monospace">${fmtP(p)}</text>`;
+    }
     x += w + 2;
   });
   const tail = Math.max(x + 26, 120);
-  return `<svg width="100%" height="${H}" viewBox="0 0 300 ${H}"
-    preserveAspectRatio="xMinYMid meet" style="display:block">
+  return `<svg width="100%" viewBox="0 0 ${VW} ${H}"
+    preserveAspectRatio="xMinYMid meet" style="display:block" aria-hidden="true">
     <rect x="0" y="${CY-30}" width="7" height="60" rx="2.5" fill="var(--line-hi)"/>
     <rect x="7" y="${CY-4}" width="${tail-7}" height="8" rx="3" fill="var(--line-hi)"/>
     ${parts}
   </svg>`;
 }
 
-function plateCard(ex, kg){
-  const t = loadTypeOf(ex.id);
+/* Plaka listesini gruplu yaz: [20,20,5] -> ["2×20","5"] */
+function plateGroups(list){
+  const c = plateCounts(list);
+  return Object.keys(c).map(Number).sort((a,b)=>b-a).map(p => c[p] > 1 ? c[p]+"×"+fmtP(p) : fmtP(p));
+}
+
+/* Seans icinde agirlik artirildiysa makinede FIILEN takili olan dizilim:
+   artirmadan onceki plakalar yerinde kalir, aradaki fark DISA eklenir.
+   Fark sadece ekleyerek kurulamiyorsa (nadiren) dizilim bastan kurulur.
+   Donus: {stack, nOld} — stack'in ilk nOld plakasi zaten takili. */
+function bumpedStack(ex, en){
+  if(!Array.isArray(en.loadedStack) || en.kg == null) return null;
+  const per = perSideKg(ex.id, en.kg);
+  const have = r2(en.loadedStack.reduce((a,b)=>a+b,0));
+  const need = r2(per - have);
+  if(need > 0.001){
+    const add = platesFor(need);
+    if(add.left <= 0.01) return {stack: en.loadedStack.concat(add.plates), nOld: en.loadedStack.length};
+  }
+  return {stack: warmPlan(ex, en.kg).stack, nOld: 0};
+}
+/* Calisma adiminda su an makinede olmasi gereken dizilim (her taraf) */
+function workStackOf(ex, en){
+  const b = bumpedStack(ex, en);
+  return b ? b.stack : warmPlan(ex, en.kg).stack;
+}
+
+/* Hareket ekraninda hangi adim gosteriliyor (isinma 1, 2 … calisma).
+   Kullanici bir sekmeye dokunduysa o; dokunmadiysa calisma setlerine
+   baslandiginda calisma, baslanmadiysa ilk isinma. */
+function wuStepOf(en, plan){
+  const last = plan.steps.length - 1;
+  if(en.wuStep != null) return Math.max(0, Math.min(last, en.wuStep));
+  if(en.reps.some(r => r != null)) return last;
+  return 0;
+}
+window.setWuStep = function(i){
+  const en = live && live.entries[detailExId];
+  if(!en) return;
+  en.wuStep = i;
+  save(); render();
+};
+
+/* ISINMA + PLAKA KARTI — tek buyuk bar, adim adim.
+   Takili plakalar gri, bu adimda takilacaklar amber, sonra takilacaklar kesik
+   cizgili. Isinmadan calismaya gecerken sadece plaka EKLENIR (warmPlan). */
+function plateCard(ex, en){
+  const kg = en.kg;
   if(ex.type === "bw" || kg == null) return "";
-  if(NO_PLATES.indexOf(ex.id) !== -1) return "";
-  if(t === "off"){
-    return `<div class="plates" style="padding:8px 13px">
+  const lt = loadTypeOf(ex.id);
+  const hidden = lt === "off" && NO_PLATES.indexOf(ex.id) === -1;   // kullanici plaka hesabini kapatti
+  const plan = warmPlan(ex, kg);
+  const steps = plan.steps;
+  const last = steps.length - 1;
+  const s = wuStepOf(en, plan);
+  const cur = steps[s];
+  const isWork = cur.work;
+
+  /* Pinli makine, isinmasi da yok — kart gereksiz */
+  if(!plan.plates && last === 0){
+    return hidden ? `<div class="plates" style="padding:8px 13px">
       <div class="ph" style="margin:0">
         <span class="lb">${T("PLAKA HESABI KAPALI")}</span>
-        <div class="pmodes">
-          <button onclick="event.stopPropagation();setLoadType('${ex.id}','total')">${T("aç")}</button>
-        </div>
+        <div class="pmodes"><button onclick="event.stopPropagation();setLoadType('${ex.id}','total')">${T("aç")}</button></div>
       </div>
+    </div>` : "";
+  }
+
+  const label = i => steps[i].work ? T("Çalışma") : T("Isınma {n}",{n:i+1});
+  const tabs = last > 0 ? `<div class="wutabs" style="grid-template-columns:repeat(${steps.length},minmax(0,1fr))" role="group" aria-label="${T("Isınma adımları")}">${steps.map((st,i) =>
+    `<button class="wutab ${i===s?'on':''}" aria-pressed="${i===s}" onclick="setWuStep(${i})">
+      <span class="t">${label(i)}</span><span class="v">${fmtKg(st.kg)} kg</span>
+    </button>`).join("")}</div>` : "";
+
+  const repsTxt = isWork ? esc(ex.scheme) : "× " + cur.reps;
+  const sideTxt = plan.plates && lt === "total"
+    ? `<div class="wuside"><span class="k">${T("HER KOLA")}</span><span class="v">${fmtP(cur.per)} kg</span></div>` : "";
+  const head = `<div class="wuhead">
+      <div class="wubig"><span class="kg">${fmtKg(cur.kg)}<i>kg</i></span><span class="rp">${repsTxt}</span></div>
+      ${sideTxt}
     </div>`;
+
+  let bar = "", action = "", legend = "", approx = "", delta = "", bump = "";
+  if(plan.plates){
+    /* Varsayilan: isinma oneklerinden calismaya. Seans icinde artirildiysa
+       calisma adimi, makinede takili olan dizilimin ustune eklemeyi gosterir. */
+    let stack = plan.stack, prevCount = s > 0 ? steps[s-1].count : 0, upto = cur.count;
+    const bs = isWork ? bumpedStack(ex, en) : null;
+    if(bs){ stack = bs.stack; prevCount = bs.nOld; upto = bs.stack.length; }
+    const status = stack.map((p,i) => i < prevCount ? "old" : i < upto ? "new" : "ghost");
+    const fresh = stack.slice(prevCount, upto);
+    bar = `<div class="wubar" role="img" aria-label="${esc(T("Her kola: takılı {a}; şimdi {b}",{
+      a: prevCount ? plateGroups(stack.slice(0, prevCount)).join(" + ") : T("boş"),
+      b: fresh.length ? plateGroups(fresh).join(" + ") : "—"}))}">${plateBarSVG(stack, status, 220)}</div>`;
+    if(fresh.length){
+      const verb = prevCount ? T("EKLE") : T("TAK");
+      const chips = plateGroups(fresh).map(g => `<span class="wuchip">${prevCount ? "+ " : ""}${g}</span>`).join("");
+      action = `<div class="wuact"><span class="verb">${verb}</span>${chips}<span class="cnt">${T("her kola")}</span></div>`;
+    }
+    if(last > 0) legend = `<div class="wuleg">
+        <span><i class="sw old"></i>${T("Takılı")}</span>
+        <span><i class="sw new"></i>${T("Şimdi tak")}</span>
+        <span><i class="sw ghost"></i>${T("Sonra")}</span>
+      </div>`;
+    if(isWork && plan.left > 0.01){
+      approx = `<div class="approx">${T("Tam tutmuyor — bu plakalarla her tarafa {a} kg olur ({b} kg eksik). Kayıt {c} kg olarak kalır.",{a:fmtP(plan.exact),b:fmtP(plan.left),c:fmtKg(kg)})}</div>`;
+    }
+    /* Isinmasi olmayan hareket: gecen seferle farki yine goster */
+    if(last === 0){
+      const lk = lastKgFor(ex.id);
+      if(lk != null && Math.abs(lk - kg) > 0.001){
+        const ref = perSideKg(ex.id, lk), per = perSideKg(ex.id, kg);
+        const d = plateDiff(ref, per);
+        const parts = [];
+        if(d.add.length) parts.push(T("ekle")+" "+d.add.join(" + "));
+        if(d.rem.length) parts.push(T("çıkar")+" "+d.rem.join(" + "));
+        if(parts.length) delta = `<div class="delta ${per>ref?'up':'dn'}">${per>ref?'▲':'▼'} ${T("{ref}, her tarafa {parts}",{ref:T("Geçen sefere göre"),parts:parts.join(" · ")})}</div>`;
+      }
+    }
+    /* Seans icinde agirlik artirildiysa bilgi satiri (ne eklenecegi barda) */
+    if(isWork && en.bumpFrom != null && Math.abs(en.bumpFrom - kg) > 0.001){
+      bump = `<div class="delta up">▲ ${T("Artırıldı: {a} → {b} kg",{a:fmtKg(en.bumpFrom),b:fmtKg(kg)})}</div>`;
+    }
+  } else if(isWork && en.bumpFrom != null && Math.abs(en.bumpFrom - kg) > 0.001){
+    bump = `<div class="delta up">▲ ${T("Artırıldı: {a} → {b} kg",{a:fmtKg(en.bumpFrom),b:fmtKg(kg)})}</div>`;
   }
-  const per = perSideKg(ex.id, kg);
-  const r = platesFor(per);
 
-  const chips = r.plates.length
-    ? `<span class="cnt">${plateListText(per)} · ${T("{n} plaka",{n:r.plates.length})}</span>`
-    : `<span class="none">${T("plakasız")}</span>`;
+  const next = !isWork ? `<button class="wunext" onclick="setWuStep(${s+1})">${
+      steps[s+1].work ? T("Isınma {n} tamam — çalışmaya geç",{n:s+1}) : T("Isınma {n} tamam — sonraki",{n:s+1})} <span class="chev">›</span></button>` : "";
 
-  const approx = r.left > 0.01
-    ? `<div class="approx">${T("Tam tutmuyor — bu plakalarla her tarafa {a} kg olur ({b} kg eksik). Kayıt {c} kg olarak kalır.",{a:fmtP(r.exact),b:fmtP(r.left),c:fmtKg(kg)})}</div>`
-    : "";
-
-  /* Referans: ısınmanın son seti, yoksa geçen antrenmanın ağırlığı */
-  const wu = warmups(ex);
-  let ref = wu.length ? perSideKg(ex.id, wu[wu.length-1]) : null;
-  let refLbl = T("Isınmadan");
-  if(ref == null){
-    const lk = lastKgFor(ex.id);
-    if(lk != null && lk !== kg){ ref = perSideKg(ex.id, lk); refLbl = T("Geçen sefere göre"); }
-  }
-  let delta = "";
-  if(ref != null && Math.abs(ref-per) > 0.01){
-    const d = plateDiff(ref, per);
-    const parts = [];
-    if(d.add.length) parts.push(T("ekle")+" "+d.add.join(" + "));
-    if(d.rem.length) parts.push(T("çıkar")+" "+d.rem.join(" + "));
-    if(parts.length) delta = `<div class="delta ${per>ref?'up':'dn'}">${per>ref?'▲':'▼'} ${T("{ref}, her tarafa {parts}",{ref:refLbl,parts:parts.join(" · ")})}</div>`;
-  }
-
-  const total = t === "total" ? kg : per*2;
-
-  return `<div class="plates">
-    <div class="pstats">
-      <div class="ps"><span class="k">${T("TOPLAM")}</span><span class="v">${fmtP(total)}<i>kg</i></span></div>
-      <div class="ps hot"><span class="k">${T("HER KOLA")}</span><span class="v">${fmtP(per)}<i>kg</i></span></div>
-      <button class="phide" onclick="event.stopPropagation();setLoadType('${ex.id}','off')">${T("gizle")}</button>
-    </div>
-    ${plateBarSVG(r.plates)}
-    <div class="chips">${chips}</div>
-    ${approx}${delta}
-    <div class="pfoot">
-      <label><input type="checkbox" ${t==='single'?'checked':''}
+  const foot = plan.plates ? `<div class="pfoot">
+      <label><input type="checkbox" ${lt==='single'?'checked':''}
         onclick="event.stopPropagation();setLoadType('${ex.id}',this.checked?'single':'total')">
         ${T("Tek yükleme noktası var (plakalar ikiye bölünmesin)")}</label>
-    </div>
+      <button class="phide" onclick="event.stopPropagation();setLoadType('${ex.id}','off')">${T("gizle")}</button>
+    </div>` : hidden ? `<div class="pfoot"><label>${T("PLAKA HESABI KAPALI")}</label>
+      <button class="phide" onclick="event.stopPropagation();setLoadType('${ex.id}','total')">${T("aç")}</button></div>` : "";
+
+  return `<div class="plates wucard">
+    ${tabs}${head}${bar}${action}${legend}${approx}${delta}${bump}${next}${foot}
   </div>`;
 }
 
@@ -1988,7 +2321,6 @@ let padTarget = null;   // {exId, setIdx, mode: 'reps'|'rpe'}
 function renderDetail(){
   const ex = findEx(detailExId);
   const en = live.entries[detailExId];
-  const wu = warmups(ex);
   const nSets = ex.sets;
 
   const openIdx = en.reps.findIndex(r => r == null);
@@ -1996,17 +2328,6 @@ function renderDetail(){
   if(!padTarget || padTarget.exId !== detailExId){
     padTarget = { exId: detailExId, setIdx: activeSet, mode: en.reps[activeSet]!=null ? 'rpe' : 'reps' };
   }
-
-  const warmRows = wu.length ? wu.map((w,i) => {
-    const rep = ex.type==="main" ? [8,5,3][i] : [10,5][i];
-    return `<div class="setrow filled">
-      <div class="c1">${i+1}</div>
-      <div class="c2"><span class="kgv">${fmtKg(w)}</span><span class="kgu">kg</span><span class="x">×</span></div>
-      <div class="c3"><span class="repcell">${rep}</span></div>
-      <div class="c4" style="color:var(--faint)">–</div>
-      <div class="c5"><div class="tick">${iconSVG('check')}</div></div>
-    </div>`;
-  }).join("") : "";
 
   const workRows = en.reps.map((r,i) => {
     const isTarget = padTarget && padTarget.setIdx === i;
@@ -2045,10 +2366,7 @@ function renderDetail(){
       <div class="art">${DRAW[ex.id] ? exerciseSVG(ex.id) : iconSVG('dumbbell')}</div>
     </div>
 
-    ${wu.length ? `<div class="tbl-label">${T("Isınma Setleri")}</div>
-    <div class="settbl">${warmRows}</div>
-    ${loadTypeOf(ex.id)!=="off" ? `<div class="wuplates">${T("Isınma, her tarafa:")} ${
-      wu.map(w=>fmtP(perSideKg(ex.id,w))+" → "+plateListText(perSideKg(ex.id,w))).join("  ·  ")}</div>` : ''}` : ''}
+    ${plateCard(ex, en)}
 
     <div class="tbl-label">${T("Çalışma Setleri")}</div>
     <div class="settbl">
@@ -2068,9 +2386,9 @@ function renderDetail(){
       ladderOf(ex)
         ? T("Pim listesi: {l} — −/+ listede gezer, kiloya dokunarak başka bir değer yazabilirsin",{l:ladderOf(ex).map(fmtKg).join(' · ')})
         : T("Kiloya dokunarak makinedeki gerçek değeri elle yazabilirsin") + (loadTypeOf(ex.id)==='off' ? ' ' + T("(Ayarlar → Pim listesi ile −/+ makinene uyar)") : '')
-    }</div>
-    ${plateCard(ex, en.kg)}` : '<div class="spacer"></div>'}
+    }</div>` : '<div class="spacer"></div>'}
 
+    ${bumpBanner(ex, en)}
     ${padTarget.mode === 'reps' ? renderNumpad(ex, en) : renderRpePanel(ex, en)}
 
     <button class="btn ${done?'':'ghost'}" onclick="backToSession()">
@@ -2102,6 +2420,7 @@ window.adjustKg = function(dir){
     const st = isCoarse(ex, en.kg) ? stepOf(ex, en.kg) : 2.5;
     en.kg = Math.max(0, r2(en.kg + dir*st));
   }
+  if(en.loadedStack && bumpedStack(ex, en).nOld === 0) delete en.loadedStack;
   save();
   render();
 };
@@ -2114,12 +2433,55 @@ window.editKg = function(){
   const n = pf(raw);
   if(!(n > 0) || n > 1000){ alert(T("Geçerli bir sayı yaz (ör. 46 veya 45.36).")); return; }
   en.kg = r2(n);
+  if(en.loadedStack && bumpedStack(ex, en).nOld === 0) delete en.loadedStack;
   const l = S.ladders && S.ladders[ex.id];
   if(l && l.length && l.indexOf(en.kg) === -1){
     if(confirm(T("{kg} kg pim listesinde yok. Listeye eklensin mi?",{kg:en.kg}))) addRung(ex.id, en.kg, true);
   }
   save();
   render();
+};
+
+/* "KOLAY GELDI" ONERISI — ilk set RPE <= 6 ile bitti. Kabul edilirse bu set
+   isinma sayilir (silinir), agirlik artar ve setlere bastan baslanir.
+   Tek bir kg alani oldugu icin farkli agirlikli setleri karistirmiyoruz. */
+function bumpBanner(ex, en){
+  const o = en.bumpOffer;
+  if(!o || en.kg == null) return "";
+  const pct = Math.round((o.to/en.kg - 1)*100);
+  return `<div class="bumpbox" role="status">
+    <div class="bt">${T("Kolay geldi!")}</div>
+    <div class="bs">${T("İlk set RPE {r} ile bitti. Ağırlığı artıralım mı? <b>{a} → {b} kg</b> (+%{p}). Bu set ısınma sayılır, setlere {b} kg ile baştan başlarsın.",{r:en.rpe[0],a:fmtKg(en.kg),b:fmtKg(o.to),p:pct})}</div>
+    <div class="bb">
+      <button class="yes" onclick="acceptBump()">${T("Artır → {b} kg",{b:fmtKg(o.to)})}</button>
+      <button class="no" onclick="declineBump()">${T("Böyle devam")}</button>
+    </div>
+  </div>`;
+}
+window.acceptBump = function(){
+  const ex = findEx(detailExId);
+  const en = live && live.entries[detailExId];
+  if(!ex || !en || !en.bumpOffer) return;
+  const to = en.bumpOffer.to;
+  if(loadTypeOf(ex.id) !== "off") en.loadedStack = workStackOf(ex, en);   // artirmadan once takili plakalar
+  if(en.bumpFrom == null) en.bumpFrom = en.kg;
+  en.kg = to;
+  en.bumps = (en.bumps||0) + 1;
+  en.reps = new Array(ex.sets).fill(null);
+  en.rpe  = new Array(ex.sets).fill(null);
+  en.rest = [];
+  delete en.bumpOffer;
+  en.wuStep = 99;                              // kart dogrudan calisma adimini gostersin
+  padTarget = { exId: detailExId, setIdx: 0, mode: 'reps' };
+  native("haptic", {style:"medium"});
+  save(); render();
+};
+window.declineBump = function(){
+  const en = live && live.entries[detailExId];
+  if(!en) return;
+  en.noBump = true;
+  delete en.bumpOffer;
+  save(); render();
 };
 
 function renderNumpad(ex, en){
@@ -2166,6 +2528,8 @@ window.enterRep = function(v){
   const wasEmpty = en.reps[padTarget.setIdx] == null;
   en.reps[padTarget.setIdx] = v;
   if(wasEmpty){
+    delete en.wuStep;                         // calisma setine baslandi — kart calisma adimina gecsin
+    if(padTarget.setIdx > 0) delete en.bumpOffer;   // oneriye cevap vermeden devam etti
     /* Setler arasi GERCEK sureyi pasif olarak not al. rest[i] = i. setten
        onceki bekleme. Duzeltmelerde olcum yapilmaz, sayac da baslamaz. */
     const now = Date.now();
@@ -2191,6 +2555,7 @@ window.clearRep = function(){
   const en = live.entries[detailExId];
   en.reps[padTarget.setIdx] = null;
   en.rpe[padTarget.setIdx] = null;
+  if(padTarget.setIdx === 0) delete en.bumpOffer;
   save();
   padTarget.mode = 'reps';
   render();
@@ -2207,6 +2572,13 @@ window.enterRpe = function(v){
   const en = live.entries[detailExId];
   const ex = findEx(detailExId);
   en.rpe[padTarget.setIdx] = v;
+  if(padTarget.setIdx === 0){
+    if(canOfferBump(ex, en)){
+      const to = bumpTarget(ex, en.kg);
+      if(to != null && to > en.kg + 0.001) en.bumpOffer = {to};
+      else delete en.bumpOffer;
+    } else delete en.bumpOffer;
+  }
   save();
   // advance to next open set
   const nextIdx = en.reps.findIndex(r => r == null);
@@ -2244,11 +2616,12 @@ window.finishSession = function(){
     const en = live.entries[ex.id];
     rec.entries[ex.id] = { kg:en.kg, reps:en.reps.slice(), rpe:en.rpe.slice() };
     if(Array.isArray(en.rest) && en.rest.some(v=>v!=null)) rec.entries[ex.id].rest = en.rest.slice();
+    if(en.bumpFrom != null && en.kg != null && Math.abs(en.bumpFrom - en.kg) > 0.001) rec.entries[ex.id].bumpedFrom = en.bumpFrom;
     if(ex.type === "bw") return;
     if(en.reps.every(r=>r==null)) return;
     /* Ilerleme, PLANLANAN degil GERCEKTEN kaldirilan kiloya gore hesaplanir */
     const lifted = en.kg != null ? en.kg : S.weights[ex.id];
-    const next = progressDecision(ex, en.reps, en.rpe, lifted).weight;
+    const next = progressDecision(ex, en.reps, en.rpe, lifted, {entry:null}).weight;
     const rpeVals = en.rpe.filter(v=>v!=null);
     const avgRpe = rpeVals.length ? Math.round(rpeVals.reduce((a,b)=>a+b,0)/rpeVals.length*10)/10 : null;
     if(next != null){
@@ -2346,7 +2719,7 @@ function prevEntry(exId, beforeIdx){
    progress() ile ayni kurallari geriye donuk okur, yeni veri saklamaz. */
 function decisionNote(ex, e, noNext){
   if(ex.type === "bw" || e.kg == null) return "";
-  const d = progressDecision(ex, e.reps, e.rpe, e.kg);
+  const d = progressDecision(ex, e.reps, e.rpe, e.kg, {entry:e});
   const rpeTxt = d.avgRpe != null ? " " + T("(Ort. RPE {v})",{v:d.avgRpe}) : "";
   /* Sonucu acikca yaz: bu performansin ardindan agirlik ne oldu.
      Boylece notun hangi antrenmana ait oldugu tartismasiz olur.
@@ -2366,6 +2739,10 @@ function decisionNote(ex, e, noNext){
       out = T("Hedefi tutturdun ama zorlanma yüksekti{rpe} {to} (sabit tutuldu)",{rpe:rpeTxt,to}); break;
     case "double_low_rpe":
       out = T("Hedefi rahat tutturdun{rpe} {to} (çift artış)",{rpe:rpeTxt,to}); break;
+    case "easy_jump":
+      out = d.streak > 1
+        ? T("Setler yine kolay geldi{rpe} — üst üste {n}. kolay seans {to} (+%{p} hızlandırılmış artış)",{rpe:rpeTxt,n:d.streak,to,p:Math.round((d.weight/e.kg - 1)*100)})
+        : T("Setler kolay geldi{rpe} {to} (+%{p} hızlandırılmış artış)",{rpe:rpeTxt,to,p:Math.round((d.weight/e.kg - 1)*100)}); break;
     case "normal":
       out = T("Hedefi ({t}+ tekrar) tutturdun{rpe} {to}",{t:ex.target,rpe:rpeTxt,to}); break;
     case "hold_weak_sets":
@@ -2457,12 +2834,14 @@ function changeLine(ex, s, idx){
   }
 
   if(e.kg == null) return "";
-  const d = progressDecision(ex, e.reps, e.rpe, e.kg);
+  const d = progressDecision(ex, e.reps, e.rpe, e.kg, {entry:e});
   const next = d && d.weight != null ? d.weight : null;
   const past = p && p.kg != null ? p.kg : null;
   /* Not artik "sonraki: X kg" tekrar etmiyor — zincir zaten soyluyor. */
   const noteClean = decisionNote(ex, e, true);
-  const noteHtml = noteClean ? `<div class="hnote">${noteClean}</div>` : "";
+  const bumpTxt = e.bumpedFrom != null ? T("Seans içinde {a} → {b} kg artırıldı",{a:fmtKg(e.bumpedFrom),b:fmtKg(e.kg)}) : "";
+  const noteHtml = (bumpTxt ? `<div class="hnote" style="color:var(--green)">▲ ${bumpTxt}</div>` : "")
+                 + (noteClean ? `<div class="hnote">${noteClean}</div>` : "");
   return chainHtml(past, e.kg, next, "kg", fmtKg) + restLine(ex, e) + noteHtml;
 }
 
@@ -2589,7 +2968,7 @@ function deleteSessions(idxSet){
     for(let i = lastIdx; i >= 0; i--){ if(entryUsable(S.sessions[i].entries[id])){ latest = i; break; } }
     if(latest < 0 || !del.has(latest)) return;          // son kayit duruyor — agirlik zaten ona gore
     const e = S.sessions[latest].entries[id];
-    const produced = progressDecision(ex, e.reps, e.rpe, e.kg).weight;
+    const produced = progressDecision(ex, e.reps, e.rpe, e.kg, {entry:e}).weight;
     if(produced == null || S.weights[id] == null || Math.abs(S.weights[id] - produced) > 0.001) return;
     let prev = null, firstDel = e;
     for(let j = latest - 1; j >= 0; j--){
@@ -2598,7 +2977,7 @@ function deleteSessions(idxSet){
       if(del.has(j)){ firstDel = pe; continue; }
       prev = pe; break;
     }
-    const target = prev ? progressDecision(ex, prev.reps, prev.rpe, prev.kg).weight : firstDel.kg;
+    const target = prev ? progressDecision(ex, prev.reps, prev.rpe, prev.kg, {entry:prev}).weight : firstDel.kg;
     if(target != null && target > 0) S.weights[id] = target;
   });
 
@@ -2709,7 +3088,7 @@ function classifyExercise(ex){
     const streak = pts.slice(pts.length-flatCount);
     const rpeVals = streak.map(p=>p.avgRpe).filter(v=>v!=null);
     const note = decisionNote(ex, last.entry);
-    const lastDecision = progressDecision(ex, last.entry.reps, last.entry.rpe, last.kg);
+    const lastDecision = progressDecision(ex, last.entry.reps, last.entry.rpe, last.kg, {entry:last.entry});
     /* "Takildi" etiketi, ham gecmis sayisina degil, GUNCEL kuralin bu
        performansi degerlendirince agirligi degistirip degistirmedigine
        bakar — cozulmus bir durumu yanlislikla alarm olarak gostermesin. */
@@ -4031,6 +4410,27 @@ function runMigrations(){
    ========================================================= */
 /* ---- CEVIRI SOZLUGU (anahtar = Turkce kaynak metin) ---- */
 Object.assign(I18N.en, {
+"Çalışma": "Working",
+"Isınma {n}": "Warm-up {n}",
+"Isınma adımları": "Warm-up steps",
+"Her kola: takılı {a}; şimdi {b}": "Each side: loaded {a}; now {b}",
+"EKLE": "ADD",
+"TAK": "LOAD",
+"her kola": "each side",
+"Takılı": "Loaded",
+"Şimdi tak": "Load now",
+"Sonra": "Later",
+"Artırıldı: {a} → {b} kg": "Increased: {a} → {b} kg",
+"her tarafa": "each side",
+"Isınma {n} tamam — çalışmaya geç": "Warm-up {n} done — go to working sets",
+"Isınma {n} tamam — sonraki": "Warm-up {n} done — next",
+"Setler yine kolay geldi{rpe} — üst üste {n}. kolay seans {to} (+%{p} hızlandırılmış artış)": "Sets felt easy again{rpe} — easy session #{n} in a row {to} (+{p}% accelerated increase)",
+"Setler kolay geldi{rpe} {to} (+%{p} hızlandırılmış artış)": "Sets felt easy{rpe} {to} (+{p}% accelerated increase)",
+"Kolay geldi!": "That was easy!",
+"İlk set RPE {r} ile bitti. Ağırlığı artıralım mı? <b>{a} → {b} kg</b> (+%{p}). Bu set ısınma sayılır, setlere {b} kg ile baştan başlarsın.": "First set finished at RPE {r}. Increase the weight? <b>{a} → {b} kg</b> (+{p}%). This set counts as a warm-up; you restart your sets at {b} kg.",
+"Artır → {b} kg": "Increase → {b} kg",
+"Böyle devam": "Keep as is",
+"Seans içinde {a} → {b} kg artırıldı": "Raised {a} → {b} kg during the session",
 "\"Antrenman Saglik\" kestirmesinden henüz veri gelmedi. Dokun: kestirmeyi çalıştır.": "No data from the \"Antrenman Saglik\" shortcut yet. Tap to run it.",
 "Kestirmeden veri geldi ama içinde değer bulunamadı. Dokun: tekrar çalıştır.": "The shortcut sent data but no values were found. Tap to run it again.",
 "Sağlık kestirmesi henüz dosya yazmamış (Dosyalar › Antrenman › saglik.txt). Dokun: yeniden dene.": "The health shortcut hasn't written its file yet (Files › Antrenman › saglik.txt). Tap to retry.",
@@ -4307,6 +4707,27 @@ Object.assign(I18N.en, {
 "Yarım kalmış bir {name} antrenmanın var{ago}.\n\nKaldığın yerden devam etmek ister misin?\n\nTamam = devam et\nİptal = bu antrenmanı sil": "You have an unfinished {name} workout{ago}.\n\nDo you want to continue where you left off?\n\nOK = continue\nCancel = delete this workout"
 });
 Object.assign(I18N.fi, {
+"Çalışma": "Työsarjat",
+"Isınma {n}": "Lämmittely {n}",
+"Isınma adımları": "Lämmittelyvaiheet",
+"Her kola: takılı {a}; şimdi {b}": "Puolta: paikallaan {a}; nyt {b}",
+"EKLE": "LISÄÄ",
+"TAK": "LAITA",
+"her kola": "per puoli",
+"Takılı": "Paikallaan",
+"Şimdi tak": "Laita nyt",
+"Sonra": "Myöhemmin",
+"Artırıldı: {a} → {b} kg": "Nostettu: {a} → {b} kg",
+"her tarafa": "per puoli",
+"Isınma {n} tamam — çalışmaya geç": "Lämmittely {n} valmis — työsarjoihin",
+"Isınma {n} tamam — sonraki": "Lämmittely {n} valmis — seuraava",
+"Setler yine kolay geldi{rpe} — üst üste {n}. kolay seans {to} (+%{p} hızlandırılmış artış)": "Sarjat tuntuivat taas kevyiltä{rpe} — {n}. kevyt treeni peräkkäin {to} (+{p} % nopeutettu nousu)",
+"Setler kolay geldi{rpe} {to} (+%{p} hızlandırılmış artış)": "Sarjat tuntuivat kevyiltä{rpe} {to} (+{p} % nopeutettu nousu)",
+"Kolay geldi!": "Liian kevyt!",
+"İlk set RPE {r} ile bitti. Ağırlığı artıralım mı? <b>{a} → {b} kg</b> (+%{p}). Bu set ısınma sayılır, setlere {b} kg ile baştan başlarsın.": "Ensimmäinen sarja päättyi RPE {r}. Nostetaanko painoa? <b>{a} → {b} kg</b> (+{p} %). Tämä sarja lasketaan lämmittelyksi; aloitat sarjat alusta {b} kg:lla.",
+"Artır → {b} kg": "Nosta → {b} kg",
+"Böyle devam": "Jatka näin",
+"Seans içinde {a} → {b} kg artırıldı": "Nostettu treenin aikana {a} → {b} kg",
 "\"Antrenman Saglik\" kestirmesinden henüz veri gelmedi. Dokun: kestirmeyi çalıştır.": "\"Antrenman Saglik\" -pikakomennosta ei ole vielä tullut tietoja. Napauta ajaaksesi sen.",
 "Kestirmeden veri geldi ama içinde değer bulunamadı. Dokun: tekrar çalıştır.": "Pikakomento lähetti tietoja, mutta arvoja ei löytynyt. Napauta ajaaksesi uudelleen.",
 "Sağlık kestirmesi henüz dosya yazmamış (Dosyalar › Antrenman › saglik.txt). Dokun: yeniden dene.": "Terveyspikakomento ei ole vielä kirjoittanut tiedostoaan (Tiedostot › Antrenman › saglik.txt). Napauta yrittääksesi uudelleen.",
