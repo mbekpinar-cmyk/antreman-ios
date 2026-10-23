@@ -3660,7 +3660,7 @@ function renderSettings(){
       <div class="row" style="gap:10px"><div class="lbl">${T("Dil")}</div>
         <div style="display:flex;gap:6px">${langButtons()}</div></div>
     </div>
-    <p class="note">${T("Mola zili: süre bitince ses çalar. Açıkken mola boyunca çok kısık bir ses çalar — bu olmadan iPhone sayfayı dondurur ve zil hiç çalmaz. Podcast veya müziğini duraklatabilir, telefon sessiz moddayken de duyulmaz. Sayaç, zil kapalıyken de doğru çalışır.")}</p>
+    <p class="note">${T("Mola zili: süre bitince kısa bir ses çalar. Spotify'ı veya podcast'ini durdurmaz, müziğinle karışarak çalar. Uygulama ekrandayken çalışır; ekran kilitliyken zil çalmaz, sayaç yine doğru sayar. Telefon sessiz moddayken duyulmaz.")}</p>
     <p class="note">${T("Pinli makineler (Seated Cable Row, Reverse Pec Deck, Ab Crunch, Biceps, Triceps…): her satırın altındaki \"Pim listesi\" bağlantısından makinedeki gerçek kiloları tek tek ekle (ör. 34, 40, 46, 52). Liste girilince −/+ ve otomatik artış/azalış sadece bu değerler arasında gezer. Antrenman sırasında kiloya dokunarak da istediğin değeri elle yazabilirsin.")}</p>
     <p class="note">${T("Ağırlık: bir sonraki antrenmanda kullanacağın kilo. Artış: hedefi tutturduğunda eklenecek kilo. Kademe alanı sadece pinli makinelerde (Biceps, Triceps) görünür — o makinede gerçekten seçilebilen en küçük adım. Kademe, ağırlığın %10'undan büyükse hareket kaba kademe moduna geçer: ağırlık her antrenman artmaz, önce tekrarlar tavana çıkar, sonra tek seferde bir kademe atlanır. Plakalı makineler bu moda hiç girmez.")}</p>
     ${blocks}
@@ -3694,7 +3694,7 @@ window.toggleBell = function(){
   save();
   /* Acildiysa dokunma anindayiz — sesi simdi ac ki daha sonra izin sorunu olmasin. */
   if(NATIVE){ if(restEnd) native("restStart", restPayload()); }
-  else if(S.restBell){ keepAliveOn(); if(restTimer) nowPlayingOn(); setTimeout(()=>{ if(!restTimer) keepAliveOff(); }, 400); }
+  else if(S.restBell) bellUnlock();
   else { keepAliveOff(); nowPlayingOff(); }
   render();
 };
@@ -4024,7 +4024,7 @@ function startRest(sec, label){
   restEnd = Date.now() + sec*1000;
   restTotal = sec; restLabel = label || "";
   if(NATIVE) native("restStart", restPayload());
-  else if(S.restBell){ keepAliveOn(); nowPlayingOn(); }
+  else if(S.restBell) bellUnlock();      // muzigi BOLMEZ: sessiz dongu yok, sadece ses motoru hazirlanir
   runRestLoop();
 }
 /* Pil: iOS uygulamasinda arka plandayken sayfa sayaci calismasin —
@@ -4068,7 +4068,7 @@ function renderRest(){
   const left = restLeftSec();
   document.body.classList.toggle("resting", !!(restTimer && left>0));
   if(!restTimer || left<=0){ $rest.innerHTML=""; return; }
-  if(!NATIVE) nowPlayingTick(left);
+  /* Web: kilit ekrani "su an calan" bilgisi yok — Spotify'in kontrollerini ele gecirmesin */
   $rest.innerHTML = `<div class="restpill">
     <div class="dot"></div>
     <div class="t">${mmss(left)}</div>
@@ -4178,12 +4178,31 @@ function nowPlayingOff(){
   }catch(e){}
 }
 
+/* MUZIGI BOLME — iOS Safari 16.4+: "ambient" oturum, Spotify/podcast ile
+   KARISIR, onu duraklatmaz. (Eskiden mola boyunca sessiz bir ses dongusu
+   caliyorduk; iOS bunu "medya" sayip muzigi durduruyordu. Artik yok.)
+   Bedeli: ekran kilitliyken sayfa donar, zil uygulama acikken calar. */
+function ambientAudio(){
+  try{ if(navigator.audioSession && navigator.audioSession.type !== "ambient") navigator.audioSession.type = "ambient"; }catch(e){}
+}
+/* Dokunma aninda ses motorunu ac ve hemen beklet — zil vakti izin sorunu olmasin */
+function bellUnlock(){
+  try{
+    ambientAudio();
+    const C = window.AudioContext || window.webkitAudioContext; if(!C) return;
+    if(!actx) actx = new C();
+    if(actx.state === "suspended") actx.resume().then(()=>{ if(!restEnd || restLeftSec() > 2) actx.suspend().catch(()=>{}); }).catch(()=>{});
+    else if(restLeftSec() > 2) actx.suspend().catch(()=>{});
+  }catch(e){}
+}
 function buzz(){
   if(!S.restBell) return;
   try{
+    ambientAudio();
     const C = window.AudioContext || window.webkitAudioContext; if(!C) return;
     if(!actx) actx = new C();
     if(actx.state === "suspended") actx.resume().catch(()=>{});
+    setTimeout(()=>{ try{ if(actx && !restEnd) actx.suspend().catch(()=>{}); }catch(e){} }, 1500);
     const beep = (at, hz)=>{
       const o = actx.createOscillator(), g = actx.createGain();
       o.connect(g); g.connect(actx.destination); o.frequency.value = hz; o.type = "sine";
@@ -4672,7 +4691,7 @@ Object.assign(I18N.en, {
 "Açık": "On",
 "Kapalı": "Off",
 "Dil": "Language",
-"Mola zili: süre bitince ses çalar. Açıkken mola boyunca çok kısık bir ses çalar — bu olmadan iPhone sayfayı dondurur ve zil hiç çalmaz. Podcast veya müziğini duraklatabilir, telefon sessiz moddayken de duyulmaz. Sayaç, zil kapalıyken de doğru çalışır.": "Rest bell: a sound plays when the time is up. While on, a very quiet sound plays during the rest — without it the iPhone freezes the page and the bell never rings. It may pause your podcast or music, and it isn't heard when the phone is on silent. The timer works correctly even when the bell is off.",
+"Mola zili: süre bitince kısa bir ses çalar. Spotify'ı veya podcast'ini durdurmaz, müziğinle karışarak çalar. Uygulama ekrandayken çalışır; ekran kilitliyken zil çalmaz, sayaç yine doğru sayar. Telefon sessiz moddayken duyulmaz.": "Rest bell: a short sound plays when the time is up. It doesn't pause Spotify or your podcast — it plays mixed with your music. It works while the app is on screen; with the screen locked the bell won't ring, but the timer still counts correctly. It isn't heard when the phone is on silent.",
 "Pinli makineler (Seated Cable Row, Reverse Pec Deck, Ab Crunch, Biceps, Triceps…): her satırın altındaki \"Pim listesi\" bağlantısından makinedeki gerçek kiloları tek tek ekle (ör. 34, 40, 46, 52). Liste girilince −/+ ve otomatik artış/azalış sadece bu değerler arasında gezer. Antrenman sırasında kiloya dokunarak da istediğin değeri elle yazabilirsin.": "Pin-loaded machines (Seated Cable Row, Reverse Pec Deck, Ab Crunch, Biceps, Triceps…): use the \"Pin list\" link under each row to add the real weights on the machine one by one (e.g. 34, 40, 46, 52). Once a list is set, −/+ and the automatic increases/decreases only move between these values. During a workout you can also tap the weight to type any value by hand.",
 "Ağırlık: bir sonraki antrenmanda kullanacağın kilo. Artış: hedefi tutturduğunda eklenecek kilo. Kademe alanı sadece pinli makinelerde (Biceps, Triceps) görünür — o makinede gerçekten seçilebilen en küçük adım. Kademe, ağırlığın %10'undan büyükse hareket kaba kademe moduna geçer: ağırlık her antrenman artmaz, önce tekrarlar tavana çıkar, sonra tek seferde bir kademe atlanır. Plakalı makineler bu moda hiç girmez.": "Weight: the weight you'll use in the next workout. Increase: the amount added when you hit the target. The step field only shows for pin-loaded machines (Biceps, Triceps) — the smallest step you can actually select on that machine. If the step is more than 10% of the weight, the exercise switches to coarse-step mode: the weight doesn't go up every workout; reps climb to the top first, then the weight jumps one step at once. Plate-loaded machines never use this mode.",
 "Plakalar": "Plates",
@@ -4969,7 +4988,7 @@ Object.assign(I18N.fi, {
 "Açık": "Päällä",
 "Kapalı": "Pois",
 "Dil": "Kieli",
-"Mola zili: süre bitince ses çalar. Açıkken mola boyunca çok kısık bir ses çalar — bu olmadan iPhone sayfayı dondurur ve zil hiç çalmaz. Podcast veya müziğini duraklatabilir, telefon sessiz moddayken de duyulmaz. Sayaç, zil kapalıyken de doğru çalışır.": "Tauon kello: ääni soi, kun aika loppuu. Päällä ollessaan hyvin hiljainen ääni soi tauon ajan — ilman sitä iPhone jäädyttää sivun eikä kello soi lainkaan. Se voi keskeyttää podcastin tai musiikin, eikä sitä kuule puhelimen ollessa äänettömällä. Ajastin toimii oikein myös kellon ollessa pois päältä.",
+"Mola zili: süre bitince kısa bir ses çalar. Spotify'ı veya podcast'ini durdurmaz, müziğinle karışarak çalar. Uygulama ekrandayken çalışır; ekran kilitliyken zil çalmaz, sayaç yine doğru sayar. Telefon sessiz moddayken duyulmaz.": "Tauon kello: lyhyt ääni soi, kun aika loppuu. Se ei keskeytä Spotifyta tai podcastia — se soi musiikin päälle. Toimii, kun sovellus on näytöllä; näytön ollessa lukittuna kello ei soi, mutta ajastin laskee silti oikein. Sitä ei kuule puhelimen ollessa äänettömällä.",
 "Pinli makineler (Seated Cable Row, Reverse Pec Deck, Ab Crunch, Biceps, Triceps…): her satırın altındaki \"Pim listesi\" bağlantısından makinedeki gerçek kiloları tek tek ekle (ör. 34, 40, 46, 52). Liste girilince −/+ ve otomatik artış/azalış sadece bu değerler arasında gezer. Antrenman sırasında kiloya dokunarak da istediğin değeri elle yazabilirsin.": "Pinnikuormitteiset laitteet (Seated Cable Row, Reverse Pec Deck, Ab Crunch, Biceps, Triceps…): lisää laitteen todelliset painot yksitellen kunkin rivin alla olevasta \"Pinnilista\"-linkistä (esim. 34, 40, 46, 52). Kun lista on asetettu, −/+ ja automaattiset nostot/laskut liikkuvat vain näiden arvojen välillä. Treenin aikana voit myös napauttaa painoa ja kirjoittaa minkä tahansa arvon käsin.",
 "Ağırlık: bir sonraki antrenmanda kullanacağın kilo. Artış: hedefi tutturduğunda eklenecek kilo. Kademe alanı sadece pinli makinelerde (Biceps, Triceps) görünür — o makinede gerçekten seçilebilen en küçük adım. Kademe, ağırlığın %10'undan büyükse hareket kaba kademe moduna geçer: ağırlık her antrenman artmaz, önce tekrarlar tavana çıkar, sonra tek seferde bir kademe atlanır. Plakalı makineler bu moda hiç girmez.": "Paino: seuraavassa treenissä käyttämäsi paino. Nousu: tavoitteen saavuttamisen jälkeen lisättävä paino. Askel-kenttä näkyy vain pinnikuormitteisilla laitteilla (Biceps, Triceps) — pienin askel, jonka laitteessa voi oikeasti valita. Jos askel on yli 10 % painosta, liike siirtyy iso askel -tilaan: paino ei nouse joka treenillä, vaan toistot nousevat ensin huippuun ja sitten paino hyppää yhden askeleen kerralla. Levypainolaitteet eivät koskaan käytä tätä tilaa.",
 "Plakalar": "Levyt",
