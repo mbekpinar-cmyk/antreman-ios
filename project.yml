@@ -9,8 +9,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "1.5.1"
-    CURRENT_PROJECT_VERSION: "11"
+    MARKETING_VERSION: "1.6.0"
+    CURRENT_PROJECT_VERSION: "12"
     TARGETED_DEVICE_FAMILY: "1"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
@@ -35,8 +35,6 @@ targets:
         LSRequiresIPhoneOS: true
         ITSAppUsesNonExemptEncryption: false
         NSSupportsLiveActivities: true
-        NSHealthShareUsageDescription: "Uyku, HRV, dinlenik nabız ve solunum verilerin günlük hazırlık puanını hesaplamak için okunur. Veriler telefondan çıkmaz."
-        NSHealthUpdateUsageDescription: "Antrenman Health'e veri yazmaz."
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         UILaunchScreen:
@@ -45,10 +43,6 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIFileSharingEnabled: true
-        CFBundleURLTypes:
-          - CFBundleURLName: com.mbekpinar.antreman
-            CFBundleURLSchemes: [antrenman]
-        LSApplicationQueriesSchemes: [shortcuts]
         LSSupportsOpeningDocumentsInPlace: true
     settings:
       base:

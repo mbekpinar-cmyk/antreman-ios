@@ -2112,7 +2112,6 @@ function renderHome(){
       <div class="hello">${greet()}</div>
       <div class="name">${esc(helloName)}</div>
     </div>
-    ${readyCardHtml()}
 
     <div class="workoutcard">
       <div class="eyebrow">${T("Bugünkü Antrenman")}</div>
@@ -3865,146 +3864,11 @@ function restPayload(){
 /* Native taraftan gelenler: kilit ekranindaki +30 sn / Bitir, uygulama geri acilinca esitleme */
 let nativeDiag = null;
 
-/* ---- HAZIRLIK — Apple Health (sadece iOS uygulamasi) ----
-   Uyku, gece HRV'si, dinlenik nabiz ve solunum, son 21 gunun medyanina gore
-   puanlanir. Apple'in kendi Readiness puani gelistiricilere acik degil;
-   bu, ayni ham verilerden bizim hesabimiz. Pil: en fazla 30 dk'da bir sorgu. */
-let healthData = null, healthAsked = 0;
-function requestHealth(force){
-  if(!NATIVE) return;
-  if(!force && Date.now() - healthAsked < 5*60*1000) return;   // kucuk bir dosya okuma — yine de en fazla 5 dk'da bir
-  healthAsked = Date.now();
-  native("health", {force: !!force});
-}
-const clamp01 = v => Math.max(0, Math.min(1, v));
-function readinessOf(m){
-  if(!m || m.status !== "ok") return null;
-  const t = m.today || {}, b = m.base || {};
-  const parts = [];
-  if(t.hrv != null && b.hrv)  parts.push({w:.4,  v: clamp01(.5 + (t.hrv/b.hrv - 1)*2.5)});   // ±%20 tam aralik
-  if(t.rhr != null && b.rhr)  parts.push({w:.25, v: clamp01(.5 + (b.rhr - t.rhr)/8)});       // ±4 atim
-  /* 12 saatten uzun uyku neredeyse her zaman "yatakta" + uyku kayitlarinin ust uste toplanmasi — kullanma */
-  if(t.sleepH != null && t.sleepH <= 12) parts.push({w:.35, v: clamp01((t.sleepH - 5)/3)});   // 5 sa=0, 8 sa=1
-  if(!parts.length) return null;
-  const W = parts.reduce((a,p)=>a+p.w,0);
-  let score = Math.round(10 * parts.reduce((a,p)=>a+p.w*p.v,0) / W);
-  const respHigh = t.resp != null && b.resp && (t.resp - b.resp) > 1.5;
-  if(respHigh) score = Math.min(score, 4);
-  return {score, respHigh, partial: parts.length < 3};
-}
-/* Kestirmeler'in yazdigi saglik.txt — "anahtar=deger" satirlari, birim/virgul toleransli. */
-function parseHealthText(txt){
-  const out = {};
-  const keyOf = k => {
-    k = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ı/g,"i").trim();
-    if(/^(sleep|uyku|uni)/.test(k)) return "sleepH";
-    if(/^(hrv|nabiz degiskenligi)/.test(k)) return "hrv";
-    if(/^(rhr|resting|dinlenik|nabiz|leposyke)/.test(k)) return "rhr";
-    if(/^(resp|solunum|breath|hengitys)/.test(k)) return "resp";
-    return null;
-  };
-  String(txt||"").split(/[;\r\n]+/).forEach(line => {
-    const mm = line.match(/^\s*([^=:]+)[=:](.*)$/); if(!mm) return;
-    const key = keyOf(mm[1]); if(!key) return;
-    const nums = (mm[2].replace(/(\d),(\d)/g,"$1.$2").match(/-?\d+(?:\.\d+)?/g) || []).map(Number).filter(n => isFinite(n));
-    if(!nums.length) return;
-    let v = key === "sleepH" ? nums.reduce((a,b)=>a+b,0) : nums.reduce((a,b)=>a+b,0)/nums.length;
-    if(key === "sleepH"){
-      /* "7 hr 24 min", "7 h 24 m", "7 sa 24 dk", "7:24" gibi sure metinleri */
-      const t = mm[2].toLowerCase().replace(/(\d),(\d)/g,"$1.$2");
-      const hm = t.match(/(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours|sa|saat|t|tuntia)\b/);
-      const mn = t.match(/(\d+(?:\.\d+)?)\s*(m|min|mins|minute|minutes|dk|dakika|min\.)\b/);
-      const cl = t.match(/^\s*(\d{1,2}):(\d{2})(?::\d{2})?\s*$/);
-      if(cl) v = +cl[1] + (+cl[2])/60;
-      else if(hm || mn) v = (hm ? +hm[1] : 0) + (mn ? +mn[1]/60 : 0);
-      else if(v > 1440) v = v/3600; else if(v > 24) v = v/60;
-    }
-    if(v > 0) out[key] = Math.round(v*100)/100;
-  });
-  return out;
-}
-function dayISO(d){ const z = n => String(n).padStart(2,"0"); return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate()); }
-/* Gunun ilk acilisinda bugun icin veri yoksa kestirmeyi bir kez kendimiz calistiralim. */
-function maybeRunShortcut(f){
-  const today = dayISO(new Date());
-  const fresh = f && f.status === "ok" && dayISO(new Date(f.mtime||0)) === today;
-  if(fresh || S.hsTried === today) return;
-  S.hsTried = today; save();
-  native("runShortcut");
-}
-window.runHealthShortcut = function(){ native("runShortcut"); };
-function onHealthFile(f){
-  maybeRunShortcut(f);
-  if(!f || f.status !== "ok"){ onHealth({status: "missing"}); return; }
-  const today = parseHealthText(f.text);
-  const fresh = (Date.now() - (f.mtime||0)) < 20*3600*1000;
-  const date = dayISO(new Date(f.mtime || Date.now()));
-  const past = (S.readiness||[]).filter(r => r && r.date !== date && (r.src === "shortcut" || r.src === "health")).slice(-21);
-  const med = k => { const v = past.map(r => r[k]).filter(x => typeof x === "number").sort((a,b)=>a-b);
-    if(!v.length) return undefined; const h = v.length>>1; return v.length%2 ? v[h] : (v[h-1]+v[h])/2; };
-  const base = {sleepH: med("sleepH"), hrv: med("hrv"), rhr: med("rhr"), resp: med("resp")};
-  onHealth({status: Object.keys(today).length ? "ok" : "empty", date, today, base, days: past.length, stale: !fresh, src: "shortcut"});
-}
-function onHealth(m){
-  healthData = m;
-  const r = readinessOf(m);
-  if(r && m.date){
-    const t = m.today || {};
-    const row = {date:m.date, score:r.score, sleepH:t.sleepH??null, hrv:t.hrv??null, rhr:t.rhr??null, resp:t.resp??null, src:m.src||"health"};
-    if(!Array.isArray(S.readiness)) S.readiness = [];
-    const i = S.readiness.findIndex(x => x.date === m.date);
-    const same = i >= 0 && JSON.stringify(S.readiness[i]) === JSON.stringify(row);
-    if(!same){ if(i >= 0) S.readiness[i] = row; else S.readiness.push(row); save(); }
-  }
-  if(view === "home") render();
-}
-function readyCardHtml(){
-  if(!NATIVE) return "";
-  const m = healthData;
-  if(!m) return `<div class="readycard"><div class="grow"><div class="lbl">${T("Hazırlık")}</div><div class="msg">${T("Apple Health okunuyor…")}</div></div></div>`;
-  if(m.status !== "ok"){
-    return `<div class="readycard" onclick="runHealthShortcut()"><div class="grow"><div class="lbl">${T("Hazırlık")}</div>
-      <div class="msg">${m.status === "missing" ? T("\"Antrenman Saglik\" kestirmesinden henüz veri gelmedi. Dokun: kestirmeyi çalıştır.") : T("Kestirmeden veri geldi ama içinde değer bulunamadı. Dokun: tekrar çalıştır.")}</div></div></div>`;
-  }
-  const r = readinessOf(m), t = m.today||{}, b = m.base||{};
-  if(!r) return `<div class="readycard" onclick="requestHealth(true)"><div class="grow"><div class="lbl">${T("Hazırlık")}</div><div class="msg">${T("Bu gece için henüz veri yok.")}</div></div></div>`;
-  const col = r.score >= 7 ? "var(--green)" : r.score >= 4 ? "var(--amber)" : "var(--red)";
-  const advice = r.respHigh ? T("Solunum hızın normalden yüksek — hastalık başlangıcı olabilir, hafif tut.")
-    : r.score >= 7 ? T("Toparlanmışsın — normal antrenman.")
-    : r.score >= 4 ? T("Normal antrenman, ama RPE'ni dinle.")
-    : T("Toparlanma düşük — ağırlık artışını zorlama.");
-  const f1 = v => v == null ? "–" : (Math.round(v*10)/10).toLocaleString(LOCALE[LANG]);
-  const f0 = v => v == null ? "–" : Math.round(v);
-  const cmp = (v, base, higherBetter, fmt) => {
-    if(v == null) return `<b>–</b>`;
-    let ar = "";
-    if(base){ const d = v - base; const tol = Math.abs(base)*0.03;
-      if(Math.abs(d) > tol){ const good = higherBetter ? d > 0 : d < 0; ar = ` <span style="color:${good?'var(--green)':'var(--red)'}">${d>0?'↑':'↓'}</span>`; } }
-    return `<b>${fmt(v)}</b>${ar}${base?` <span style="color:var(--faint)">/ ${fmt(base)}</span>`:''}`;
-  };
-  return `<div class="readycard" onclick="runHealthShortcut()" style="align-items:flex-start">
-    <div style="flex:none;width:52px;height:52px;border-radius:50%;border:3px solid ${col};display:grid;place-items:center;font-family:var(--fn);font-size:20px;font-weight:800">${r.score}</div>
-    <div class="grow">
-      <div class="lbl">${T("Bugünkü Hazırlık")}${r.partial?` <span style="color:var(--faint)">· ${T("eksik veri")}</span>`:''}</div>
-      <div class="msg" style="color:var(--text)">${advice}</div>
-      <div class="msg" style="display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin-top:6px;font-family:var(--fn);font-size:11.5px">
-        <span>${T("Uyku")}</span><span>${cmp(t.sleepH, b.sleepH, true, v=>f1(v)+" "+T("sa"))}</span>
-        <span>HRV</span><span>${cmp(t.hrv, b.hrv, true, v=>f0(v)+" ms")}</span>
-        <span>${T("Dinlenik nabız")}</span><span>${cmp(t.rhr, b.rhr, false, f0)}</span>
-        <span>${T("Solunum")}</span><span>${cmp(t.resp, b.resp, false, f1)}</span>
-      </div>
-      <div class="msg" style="font-size:10.5px;color:var(--faint);margin-top:4px">${m.stale?`<span style="color:var(--amber)">${T("Eski veri — kestirme bugün çalışmamış")}</span> · `:''}${m.days ? T("Apple Watch verilerinden hesaplandı · / = son {n} gün ortancası",{n:m.days}) : T("Karşılaştırma için birkaç günlük veri birikmesi gerekiyor.")}</div>
-    </div></div>`;
-}
-/* "Antrenman acildiginda" otomasyonu kestirmeyi uygulamayla AYNI ANDA calistirir;
-   dosya birkac saniye sonra yazilir. O yuzden acilistan sonra iki kez daha bak. */
-function healthAfterOpen(){ requestHealth(false); setTimeout(()=>requestHealth(true), 5000); setTimeout(()=>requestHealth(true), 15000); }
-document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) healthAfterOpen(); });
+/* Hazirlik karti (Kestirmeler + saglik.txt) 1.6.0'da kaldirildi. Eski S.readiness kayitlari yedekte korunur. */
 window.runNativeDiag = function(){ nativeDiag = [["…","kontrol ediliyor"]]; render(); native("diag"); };
 window.testRest = function(){ startRest(20, "Test"); setTimeout(()=>native("diag"), 1500); };
 window.__fromNative = function(m){
   try{
-    if(m && m.type === "healthFile"){ onHealthFile(m); return; }
     if(m && m.type === "diag"){ nativeDiag = (m.rows || []).concat([["JS hataları", jsErrors.length ? jsErrors.slice(-5).join(" | ") : "yok"]]); if(view === "settings") render(); return; }
     if(!m || m.type !== "restSync") return;
     const end = +m.end || 0;
@@ -5035,7 +4899,6 @@ applyLang();
 restoreLiveSession();     // migration'lardan ONCE — onlar save() cagiriyor ve
 runMigrations();          // o anda bellekteki live henuz null oldugu icin
 render();                 // diskteki kaydi silerlerdi
-if(S.setup) healthAfterOpen();   // iOS uygulamasi: acilista saglik dosyasini oku
 window.addEventListener("beforeunload", e => { if(live){ e.preventDefault(); e.returnValue=""; } });
 </script>
 </body>
