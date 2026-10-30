@@ -285,6 +285,39 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.03em;margin:6px 0 2px;line-he
 .scorecard .n{font-family:var(--fn);font-size:54px;font-weight:800;color:var(--amber);letter-spacing:-.04em;line-height:1}
 .scorecard .m{font-size:13px;color:var(--muted);margin-top:10px}
 
+/* ---------- kas haritasi ---------- */
+.bmwrap{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 10px 12px;margin:0 0 14px}
+.hcard .bmwrap{background:none;border:none;padding:10px 0 6px;margin:0}
+.bmhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:0 6px 8px}
+.bmhead span{font-size:15px;font-weight:700}
+.bmhead small{font-size:11px;color:var(--muted)}
+.bmfigs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.bmfigs figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bmfigs figcaption{font-size:10.5px;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.bmfig{width:100%;max-width:172px;height:auto;display:block}
+.bmm{cursor:pointer}
+.bmlegs{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 12px;font-size:11px;color:var(--muted);margin:10px 0}
+.bmleg{display:inline-flex;align-items:center;gap:5px}
+.bmleg i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.bmpanel{background:var(--cell);border:1px solid var(--line);border-radius:13px;padding:12px 13px;margin:0 4px}
+.bmhint{font-size:12.5px;color:var(--muted);text-align:center}
+.bmph{display:flex;align-items:center;gap:9px}
+.bmph i{width:13px;height:13px;border-radius:4px;flex:none}
+.bmph b{flex:1;font-size:14.5px}
+.bmph span{font-family:var(--fn);font-size:12.5px;font-weight:700}
+.bmph button{width:36px;height:36px;border-radius:9px;background:var(--card-2);color:var(--muted);font-size:17px;font-weight:700}
+.bmpr{display:flex;justify-content:space-between;gap:8px;padding-top:8px;margin-top:8px;border-top:1px solid var(--line);font-size:12.5px}
+.bmpr span:last-child{color:var(--muted);white-space:nowrap}
+.bmpr b{color:var(--text);font-family:var(--fn)}
+.bmpe{font-size:12.5px;color:var(--muted);margin-top:8px}
+.bmrow{display:grid;grid-template-columns:110px 1fr 38px;gap:10px;align-items:center;padding:8px 0;font-size:13px;cursor:pointer}
+.bmrow b{font-family:var(--fn);text-align:right}
+.bmbar{height:8px;background:var(--card-2);border-radius:99px;overflow:hidden}
+.bmbar i{display:block;height:100%;border-radius:99px}
+.bmidle{font-size:12px;color:var(--muted);padding:10px 0 4px;border-top:1px solid var(--line);margin-top:4px}
+.bmidle b{color:var(--text)}
+.bmnote{font-size:11.5px;color:var(--muted);line-height:1.5;margin:8px 4px 16px}
+
 /* ---------- done ---------- */
 .donewrap{padding:34px 0 8px;text-align:center}
 .donebadge{width:130px;height:130px;margin:0 auto 22px;position:relative;display:grid;place-items:center}
@@ -2635,12 +2668,139 @@ window.finishSession = function(){
 
   const totalVol = sessionVolume(rec);
   const totalSets = sessionSets(rec);
-  doneSummary = { workoutName: wo.name, durationMin, durationSec, totalVol, totalSets, changes };
+  doneSummary = { workoutName: wo.name, durationMin, durationSec, totalVol, totalSets, changes, rec };
+  muscleSel = {scope:null, key:null};
   live = null;
   stopRest();
   view = "done";
   render();
 };
+
+/* =========================================================
+   KAS HARITASI — antrenman sonu + gecmis
+   Sert set: RPE 7+ = 1, RPE 6 = 0.5, altı = 0. RPE girilmemis
+   (eski kayitlar) ama tekrar varsa 1 sayilir. Yardimci kaslar
+   payi kadar alir (ornegin shoulder press -> triceps 0.5).
+   ========================================================= */
+const BM_SIL="M100 46 L88 47 Q88 60 66 67 Q48 73 44 95 Q40 128 41 158 Q36 188 38 212 Q40 230 47 232 Q53 220 55 200 Q59 182 61 164 Q63 182 62 196 Q54 230 57 268 Q59 298 62 318 Q57 356 63 386 Q63 406 71 410 L90 410 Q90 396 84 388 Q90 350 87 318 Q93 296 96 262 L100 252 Z";
+const BM_FRONT=[["N","M88 46 L100 46 L100 64 L86 64 Q88 56 88 46 Z"],["N","M89 47 Q93 57 99 65 L95 67 Q89 57 87 49 Z"],["upperBack","M86 58 Q76 64 66 69 L84 68 Z",["M85 61 Q76 65 69 68"]],["sideDelt","M56 71 Q45 77 43 95 Q43 103 46 109 Q46 92 53 81 Z",["M51 77 Q46 88 45 102"]],["frontDelt","M66 69 Q53 72 49 86 Q47 98 50 107 Q59 96 69 87 Q76 79 80 72 Z",["M66 73 Q57 82 53 98","M72 74 Q62 84 56 96","M60 72 Q53 80 51 94"]],["chest","M66 84 Q61 96 63 109 Q77 115 91 117 Q99 112 99 110 L99 82 Q80 84 66 84 Z",["M98 88 Q82 88 68 90","M98 96 Q82 96 66 98","M98 104 Q82 104 66 104","M96 110 Q82 110 70 108"]],["chest","M80 71 Q70 76 66 84 Q80 85 99 82 L99 73 Q90 68 80 71 Z",["M98 76 Q86 76 74 78","M98 80 Q84 80 70 82"]],["N","M63 111 L73 115 L71 120 L61 117 Z"],["N","M61 120 L71 123 L70 128 L61 126 Z"],["N","M61 129 L70 131 L69 136 L62 135 Z"],["biceps","M50 109 Q44 122 44 139 Q46 151 52 153 Q58 145 60 130 Q60 116 56 108 Z",["M49 116 Q47 132 49 148","M54 113 Q54 130 54 148","M58 118 Q58 130 56 142"]],["T","M47 149 Q49 154 53 156 L56 152 Q52 152 49 147 Z"],["forearms","M44 156 Q38 172 39 190 Q41 204 44 212 L52 212 Q56 196 57 176 Q58 162 54 156 Z",["M50 162 Q50 186 49 208","M54 166 Q53 186 51 206"]],["forearms","M44 156 Q38 170 39 186 Q44 178 50 160 Z",["M43 162 Q40 172 40 182"]],["T","M42 208 L53 208 L53 213 L42 213 Z"],["N","M45 214 Q40 222 43 230 Q47 234 51 230 Q53 222 51 214 Z"],["abs","M87 118 h11 v14 h-11 Z"],["abs","M87 134 h11 v14 h-11 Z"],["abs","M87 150 h11 v14 h-11 Z"],["abs","M87 166 L98 166 L98 194 Q89 186 87 166 Z"],["abs","M63 114 Q60 134 64 152 Q70 168 84 178 L84 119 Q74 117 63 114 Z",["M66 124 Q74 132 82 134","M65 138 Q73 146 82 148","M67 152 Q74 160 82 163"]],["T","M98.6 112 L101.4 112 L101.4 196 L98.6 196 Z"],["N","M66 170 Q76 186 99 199 L99 207 Q80 205 68 193 Z"],["quads","M66 192 Q56 222 58 258 Q61 284 71 296 Q81 300 89 292 Q95 262 95 232 Q93 210 86 202 Q75 198 66 192 Z"],["quads","M66 192 Q56 222 58 258 Q61 284 71 296 Q72 270 72 240 Q70 210 66 192 Z",["M63 214 Q61 244 64 280","M68 210 Q67 244 69 282"]],["quads","M71 197 Q77 230 77 262 Q77 284 80 296 Q87 282 88 254 Q88 222 83 201 Z",["M78 206 Q81 240 80 284","M83 210 Q85 240 84 276"]],["quads","M85 256 Q93 268 91 290 Q85 300 80 296 Q85 280 85 256 Z",["M87 266 Q88 280 84 292"]],["N","M68 197 Q86 232 93 290 L89 292 Q81 234 66 201 Z"],["N","M87 203 Q97 215 99 232 L99 252 Q93 242 91 228 Z"],["T","M59 214 Q56 252 61 292 L64.5 292 Q60 252 62.5 214 Z"],["N","M70 300 Q68 308 72 314 Q80 316 86 310 Q88 302 84 298 Z"],["T","M75 309 h7 v9 h-7 Z"],["calves","M64 316 Q59 340 63 366 Q67 382 73 385 Q77 360 76 332 Q74 320 70 314 Z",["M67 324 Q65 344 68 370","M71 322 Q72 346 72 374"]],["N","M76 316 Q86 330 84 360 Q82 378 80 388 L74 386 Q78 360 76 332 Z",["M80 324 Q82 350 79 380"]],["T","M68 386 L84 386 L84 390 L68 390 Z"],["N","M68 390 Q65 402 71 408 L89 408 Q89 398 82 390 Z"]];
+const BM_BACK=[["N","M88 46 L100 46 L100 60 L88 60 Z"],["upperBack","M100 50 Q90 58 72 66 Q62 70 58 76 Q76 80 88 92 Q96 110 100 130 Z",["M99 56 Q86 64 68 70","M99 70 Q88 76 72 78","M99 86 Q92 88 84 86","M99 100 Q95 96 90 94","M99 116 Q97 108 94 104"]],["sideDelt","M56 71 Q45 77 43 95 Q43 103 46 109 Q46 92 53 81 Z",["M51 77 Q46 88 45 102"]],["rearDelt","M58 75 Q49 80 47 95 Q48 103 51 107 Q60 93 72 84 Z",["M60 80 Q53 88 50 100","M66 82 Q58 90 53 102"]],["upperBack","M72 84 Q62 92 60 104 Q72 109 86 104 Q88 95 84 89 Z",["M64 98 Q74 94 84 94","M64 103 Q74 101 84 100"]],["lats","M60 106 Q59 130 66 150 Q76 168 92 176 L97 168 Q95 140 88 107 Q74 110 60 106 Z",["M63 114 Q72 140 90 166","M70 110 Q78 134 93 158","M78 109 Q85 128 94 146","M62 128 Q68 146 82 166"]],["lowerBack","M91 132 Q88 156 92 177 L99 181 L99 130 Z",["M95 136 Q94 156 96 176"]],["T","M90 150 Q99 168 99 186 L92 179 Q88 164 90 150 Z"],["T","M99.3 48 L100.7 48 L100.7 186 L99.3 186 Z"],["triceps","M50 109 Q44 122 44 139 Q46 151 52 153 Q58 145 60 130 Q60 116 56 108 Z",["M53 114 Q53 128 52 140","M57 118 Q57 130 55 140"]],["triceps","M50 109 Q44 122 44 139 Q48 132 52 118 Z",["M47 118 Q45 128 46 136"]],["T","M47 139 Q50 150 53 153 Q58 146 59 136 Q53 141 47 139 Z"],["forearms","M44 156 Q38 172 39 190 Q41 204 44 212 L52 212 Q56 196 57 176 Q58 162 54 156 Z",["M48 162 Q47 186 47 208","M53 166 Q53 186 51 206"]],["T","M42 208 L53 208 L53 213 L42 213 Z"],["N","M45 214 Q40 222 43 230 Q47 234 51 230 Q53 222 51 214 Z"],["glutes","M64 172 Q62 178 66 182 Q80 178 92 179 L88 172 Z",["M68 176 Q78 175 88 176"]],["glutes","M66 183 Q59 197 64 214 Q74 228 90 226 Q99 222 99 206 L99 187 Q84 180 66 183 Z",["M69 190 Q82 196 97 196","M66 200 Q80 208 96 210","M68 212 Q80 220 94 220"]],["hams","M64 224 Q58 250 62 280 Q66 296 74 300 Q80 280 82 258 Q82 236 80 228 Z",["M66 234 Q64 258 68 288","M73 232 Q74 260 74 292","M78 236 Q79 256 77 280"]],["hams","M82 228 Q86 250 86 274 Q86 292 90 298 Q96 276 96 250 Q94 232 90 226 Z",["M88 236 Q90 260 90 290","M92 236 Q94 256 93 278"]],["T","M59 214 Q57 250 61 290 L64 290 Q60 250 62 214 Z"],["N","M70 302 Q68 308 72 313 Q80 315 88 310 Q90 304 86 300 Z"],["calves","M62 314 Q56 334 60 352 Q66 366 74 368 Q78 350 78 330 Q76 316 72 310 Z",["M65 322 Q62 338 66 360","M70 318 Q71 340 72 364"]],["calves","M78 312 Q88 326 88 346 Q86 362 80 370 Q78 350 78 330 Z",["M82 320 Q85 340 82 364"]],["calves","M61 352 Q63 370 72 376 L74 368 Q65 364 61 352 Z"],["calves","M80 370 Q87 364 88 350 Q90 366 84 376 Z"],["T","M73 368 Q76 380 75 391 L82 391 Q81 380 81 370 Z"],["N","M68 390 Q65 402 71 408 L89 408 Q89 398 82 390 Z"]];
+
+const MUSCLE_KEYS = ["chest","frontDelt","sideDelt","rearDelt","upperBack","lats","lowerBack","biceps","triceps","forearms","abs","glutes","quads","hams","calves"];
+const MUSCLE_NAMES = { chest:"Göğüs", frontDelt:"Ön omuz", sideDelt:"Yan omuz", rearDelt:"Arka omuz", upperBack:"Üst sırt",
+  lats:"Kanat (lat)", lowerBack:"Bel", biceps:"Biceps", triceps:"Triceps", forearms:"Ön kol", abs:"Karın", glutes:"Kalça",
+  quads:"Ön bacak", hams:"Arka bacak", calves:"Baldır" };
+/* hareket -> {kas: pay}. 1 = ana hedef. Arsivdeki hareketler de var (eski kayitlar icin). */
+const EX_MUSCLES = {
+  a1:{chest:1, frontDelt:.5, triceps:.5}, a2:{hams:1}, a3:{lats:1, biceps:.5, upperBack:.5, rearDelt:.3},
+  a4:{quads:1}, a5:{sideDelt:1}, a6:{abs:1},
+  b1:{quads:1, glutes:.5}, b2u:{chest:1, frontDelt:.5, triceps:.5}, b2:{chest:1, frontDelt:.5, triceps:.5},
+  b3:{upperBack:1, lats:.6, rearDelt:.5, biceps:.5}, b4:{rearDelt:1, upperBack:.5}, b5:{biceps:1, forearms:.3}, b6:{abs:1},
+  c1:{frontDelt:1, sideDelt:.5, triceps:.5}, c2u:{glutes:1, hams:.3}, c2:{quads:1, glutes:.5},
+  c3:{upperBack:1, lats:.6, rearDelt:.5, biceps:.5}, c4:{chest:1, frontDelt:.3}, c5:{triceps:1}, c6:{abs:1}, c7:{calves:1}
+};
+const MUSCLE_TIERS = [[5,"#d93636","Çok yüksek","5+"],[4,"#f07a2a","Yüksek","4–5"],[2,"#e8c547","Orta","2–4"],[0.01,"#7fd99f","Hafif","<2"],[0,"#3b3e44","Yok",""]];
+function muscleColor(v){
+  for(const t of MUSCLE_TIERS){ if(t[0] > 0 ? v >= t[0] : v === 0) return t[1]; }
+  return "#3b3e44";
+}
+function hardSets(e){
+  if(!e || !Array.isArray(e.reps)) return 0;
+  let n = 0;
+  e.reps.forEach((r, i) => {
+    if(r == null || r <= 0) return;
+    const rpe = Array.isArray(e.rpe) ? e.rpe[i] : null;
+    if(rpe == null) n += 1;
+    else if(rpe >= 7) n += 1;
+    else if(rpe >= 6) n += 0.5;
+  });
+  return n;
+}
+function muscleLoad(s){
+  const tot = {}, contrib = {};
+  MUSCLE_KEYS.forEach(k => { tot[k] = 0; contrib[k] = []; });
+  if(!s || !s.entries) return {tot, contrib};
+  Object.keys(s.entries).forEach(id => {
+    const m = EX_MUSCLES[id]; if(!m) return;
+    const h = hardSets(s.entries[id]); if(!h) return;
+    const ex = findExAny(id);
+    Object.keys(m).forEach(k => {
+      const v = h * m[k];
+      tot[k] += v;
+      contrib[k].push({id, n: ex ? ex.n : id, share: m[k], v});
+    });
+  });
+  MUSCLE_KEYS.forEach(k => { tot[k] = Math.round(tot[k]*10)/10; contrib[k].sort((a,b)=>b.v-a.v); });
+  return {tot, contrib};
+}
+let muscleSel = {scope: null, key: null};
+window.muscleTap = function(scope, key){
+  muscleSel = (muscleSel.scope === scope && muscleSel.key === key) ? {scope:null, key:null} : {scope, key};
+  render();
+};
+let bmSeq = 0;
+function bodyFigureSVG(items, label, colors, sel, scope){
+  const gid = "bmg" + (++bmSeq);
+  const half = items.map(it => {
+    const k = it[0], d = it[1], fib = it[2] || [];
+    if(k === "T") return `<path d="${d}" fill="#cfd2d7" fill-opacity="0.62" pointer-events="none"/>`;
+    let out;
+    if(k === "N") out = `<path d="${d}" fill="#3b3e44"/>`;
+    else {
+      const on = sel === k;
+      out = `<path class="bmm" d="${d}" fill="${colors[k]}" stroke="${on?'#fff':'#060708'}" stroke-width="${on?2.4:1.2}" onclick="event.stopPropagation();muscleTap('${scope}','${k}')"/>`;
+    }
+    out += `<path d="${d}" fill="url(#${gid})" stroke="none" pointer-events="none"/>`;
+    fib.forEach(l => { out += `<path d="${l}" fill="none" stroke="#000" stroke-opacity="0.28" stroke-width="0.7" stroke-linecap="round" pointer-events="none"/>`; });
+    return out;
+  }).join("");
+  return `<svg class="bmfig" viewBox="0 0 200 420" role="img" aria-label="${esc(label)}">
+    <defs><radialGradient id="${gid}" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#fff" stop-opacity=".26"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".5"/></radialGradient></defs>
+    <path d="${BM_SIL}" fill="#202226"/><path d="${BM_SIL}" fill="#202226" transform="matrix(-1 0 0 1 200 0)"/>
+    <ellipse cx="100" cy="27" rx="16" ry="20" fill="#45484f" stroke="#060708" stroke-width="1.3"/>
+    <g stroke="#060708" stroke-width="1.2" stroke-linejoin="round">${half}</g>
+    <g stroke="#060708" stroke-width="1.2" stroke-linejoin="round" transform="matrix(-1 0 0 1 200 0)">${half}</g>
+  </svg>`;
+}
+/* full = antrenman sonu (liste + aciklama dahil); degilse gecmis karti icin kisa hali */
+function muscleBlockHtml(s, scope, full){
+  const {tot, contrib} = muscleLoad(s);
+  const colors = {}; MUSCLE_KEYS.forEach(k => colors[k] = muscleColor(tot[k]));
+  const sel = muscleSel.scope === scope ? muscleSel.key : null;
+  const fmt = v => (Math.round(v*10)/10).toLocaleString(LOCALE[LANG]);
+  const legend = MUSCLE_TIERS.map(t => `<span class="bmleg"><i style="background:${t[1]}"></i>${T(t[2])}${t[3]?' · '+t[3]:''}</span>`).join("");
+  let panel;
+  if(sel){
+    const list = contrib[sel];
+    panel = `<div class="bmpanel">
+      <div class="bmph"><i style="background:${colors[sel]}"></i><b>${T(MUSCLE_NAMES[sel])}</b><span>${T("{n} sert set",{n:fmt(tot[sel])})}</span>
+        <button aria-label="${T("Kapat")}" onclick="event.stopPropagation();muscleTap('${scope}','${sel}')">×</button></div>
+      ${list.length ? list.map(c => `<div class="bmpr"><span>${esc(c.n)}</span><span>${c.share >= 1 ? T("ana hedef") : T("yardımcı ×{s}",{s:fmt(c.share)})} · <b>+${fmt(c.v)}</b></span></div>`).join("")
+        : `<div class="bmpe">${T("Bu antrenmanda çalışmadı.")}</div>`}
+    </div>`;
+  } else {
+    panel = `<div class="bmpanel bmhint">${T("Kasa dokun, hangi hareketlerin çalıştırdığını gör.")}</div>`;
+  }
+  let listHtml = "";
+  if(full){
+    const worked = MUSCLE_KEYS.filter(k => tot[k] > 0).sort((a,b)=>tot[b]-tot[a]);
+    const idle = MUSCLE_KEYS.filter(k => tot[k] === 0).map(k => T(MUSCLE_NAMES[k]));
+    listHtml = `<div class="tbl-label">${T("Kaslara göre sert set")}</div>
+      <div class="perfblock">${worked.map(k => `<div class="bmrow" onclick="muscleTap('${scope}','${k}')"><span>${T(MUSCLE_NAMES[k])}</span>
+        <span class="bmbar"><i style="width:${Math.min(100, Math.round(tot[k]/6*100))}%;background:${colors[k]}"></i></span><b>${fmt(tot[k])}</b></div>`).join("")}
+        ${idle.length ? `<div class="bmidle"><b>${T("Çalışmayanlar:")}</b> ${idle.join(", ")}</div>` : ""}</div>
+      <p class="bmnote">${T("RPE 7 ve üstü set tam sayılır, RPE 6 yarım, altı sayılmaz. Yardımcı kaslar pay alır (örneğin shoulder press → triceps ½).")}</p>`;
+  }
+  return `<div class="bmwrap" onclick="event.stopPropagation()">
+      <div class="bmhead"><span>${T("Çalışan Kaslar")}</span><small>${T("sert set · kasa dokun")}</small></div>
+      <div class="bmfigs">
+        <figure>${bodyFigureSVG(BM_FRONT, T("Ön"), colors, sel, scope)}<figcaption>${T("Ön")}</figcaption></figure>
+        <figure>${bodyFigureSVG(BM_BACK, T("Arka"), colors, sel, scope)}<figcaption>${T("Arka")}</figcaption></figure>
+      </div>
+      <div class="bmlegs">${legend}</div>
+      ${panel}
+    </div>${listHtml}`;
+}
 
 function renderDone(){
   const d = doneSummary;
@@ -2668,6 +2828,7 @@ function renderDone(){
         <div class="donestat"><div class="k">${T("Toplam Hacim")}</div><div class="v">${Math.round(d.totalVol).toLocaleString(LOCALE[LANG])}<small> kg</small></div></div>
       </div>
     </div>
+    ${d.rec ? muscleBlockHtml(d.rec, "done", true) : ""}
     ${perfRows ? `<div class="tbl-label">${T("Performans Özeti")}</div>
     <div class="perfblock">${perfRows}</div>` : ''}
     <button class="btn" onclick="doneSummary=null; go('home')">${T("ANA SAYFAYA DÖN")}</button>
@@ -2908,7 +3069,7 @@ function renderHistoryScreen(){
           ${avgRpe!=null?`<div class="hrpe">${T("Ort. RPE")} ${avgRpe}</div>`:''}
         </div>
       </div>
-      ${expanded ? detailRows : ''}
+      ${expanded ? muscleBlockHtml(s, "h"+realIdx, false) + detailRows : ''}
     </div>`;
   }).join("");
   const n = histSel ? histSel.size : 0;
@@ -2923,7 +3084,7 @@ function renderHistoryScreen(){
     ${bar}
   `;
 }
-window.toggleHist = function(i){ historyOpen = historyOpen===i ? null : i; render(); };
+window.toggleHist = function(i){ historyOpen = historyOpen===i ? null : i; muscleSel = {scope:null, key:null}; render(); };
 
 /* ---- Gecmis antrenmanlari secip silme (galeri gibi) ---- */
 let histSel = null;   // null = normal mod, Set = secim modu (gercek session index'leri)
@@ -4293,6 +4454,39 @@ function runMigrations(){
    ========================================================= */
 /* ---- CEVIRI SOZLUGU (anahtar = Turkce kaynak metin) ---- */
 Object.assign(I18N.en, {
+"Göğüs": "Chest",
+"Ön omuz": "Front delts",
+"Yan omuz": "Side delts",
+"Arka omuz": "Rear delts",
+"Üst sırt": "Upper back",
+"Kanat (lat)": "Lats",
+"Bel": "Lower back",
+"Biceps": "Biceps",
+"Triceps": "Triceps",
+"Ön kol": "Forearms",
+"Karın": "Abs",
+"Kalça": "Glutes",
+"Ön bacak": "Quads",
+"Arka bacak": "Hamstrings",
+"Baldır": "Calves",
+"Çok yüksek": "Very high",
+"Yüksek": "High",
+"Orta": "Medium",
+"Hafif": "Light",
+"Yok": "None",
+"{n} sert set": "{n} hard sets",
+"Kapat": "Close",
+"ana hedef": "main target",
+"yardımcı ×{s}": "helper ×{s}",
+"Bu antrenmanda çalışmadı.": "Not worked in this session.",
+"Kasa dokun, hangi hareketlerin çalıştırdığını gör.": "Tap a muscle to see which exercises worked it.",
+"Kaslara göre sert set": "Hard sets per muscle",
+"Çalışmayanlar:": "Not trained:",
+"RPE 7 ve üstü set tam sayılır, RPE 6 yarım, altı sayılmaz. Yardımcı kaslar pay alır (örneğin shoulder press → triceps ½).": "A set counts fully at RPE 7 or higher, half at RPE 6, not at all below. Helper muscles get a share (e.g. shoulder press → triceps ½).",
+"Çalışan Kaslar": "Muscles worked",
+"sert set · kasa dokun": "hard sets · tap a muscle",
+"Ön": "Front",
+"Arka": "Back",
 "Çalışma": "Working",
 "Isınma {n}": "Warm-up {n}",
 "Isınma adımları": "Warm-up steps",
@@ -4590,6 +4784,39 @@ Object.assign(I18N.en, {
 "Yarım kalmış bir {name} antrenmanın var{ago}.\n\nKaldığın yerden devam etmek ister misin?\n\nTamam = devam et\nİptal = bu antrenmanı sil": "You have an unfinished {name} workout{ago}.\n\nDo you want to continue where you left off?\n\nOK = continue\nCancel = delete this workout"
 });
 Object.assign(I18N.fi, {
+"Göğüs": "Rinta",
+"Ön omuz": "Etuolkapää",
+"Yan omuz": "Sivuolkapää",
+"Arka omuz": "Takaolkapää",
+"Üst sırt": "Yläselkä",
+"Kanat (lat)": "Leveä selkälihas",
+"Bel": "Alaselkä",
+"Biceps": "Hauis",
+"Triceps": "Ojentaja",
+"Ön kol": "Kyynärvarsi",
+"Karın": "Vatsa",
+"Kalça": "Pakarat",
+"Ön bacak": "Etureisi",
+"Arka bacak": "Takareisi",
+"Baldır": "Pohkeet",
+"Çok yüksek": "Erittäin korkea",
+"Yüksek": "Korkea",
+"Orta": "Keskitaso",
+"Hafif": "Kevyt",
+"Yok": "Ei",
+"{n} sert set": "{n} kovaa sarjaa",
+"Kapat": "Sulje",
+"ana hedef": "päätavoite",
+"yardımcı ×{s}": "avustava ×{s}",
+"Bu antrenmanda çalışmadı.": "Ei kuormitettu tässä treenissä.",
+"Kasa dokun, hangi hareketlerin çalıştırdığını gör.": "Napauta lihasta nähdäksesi, mitkä liikkeet kuormittivat sitä.",
+"Kaslara göre sert set": "Kovat sarjat lihaksittain",
+"Çalışmayanlar:": "Ei harjoiteltu:",
+"RPE 7 ve üstü set tam sayılır, RPE 6 yarım, altı sayılmaz. Yardımcı kaslar pay alır (örneğin shoulder press → triceps ½).": "Sarja lasketaan kokonaan RPE 7:stä ylöspäin, puoliksi RPE 6:lla, alempana ei lainkaan. Avustavat lihakset saavat osuuden (esim. pystypunnerrus → ojentaja ½).",
+"Çalışan Kaslar": "Työskennelleet lihakset",
+"sert set · kasa dokun": "kovat sarjat · napauta lihasta",
+"Ön": "Edestä",
+"Arka": "Takaa",
 "Çalışma": "Työsarjat",
 "Isınma {n}": "Lämmittely {n}",
 "Isınma adımları": "Lämmittelyvaiheet",
